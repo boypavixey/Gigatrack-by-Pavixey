@@ -11,13 +11,14 @@
 <style>
 :root{
   /* Dark theme variables (visual-only changes) */
-  --paper:#123632;--surface:#1e4d45;--ink:#ffffff;--muted:#bcd6cf;--hair:#2c5850;
-  --jade:#2bcf8e;--jade-bright:#3dffb0;--ochre:#f2b84c;
+  --paper:#0D1F1A;--surface:#14291F;--ink:#F5F7F5;--muted:#7A9689;--hair:#3A4E45;
+  --jade:#2DD4A6;--jade-bright:#55E8C4;--ochre:#FBBF24;
+  --macro-protein:#5BC0F8;--macro-fat:#FB7185;--macro-sugar:#C084FC;--danger:#F87171;--sec-text:#CBD8D0;
   --shadow:0 6px 18px rgba(0,0,0,.6),0 2px 4px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
-body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180deg,var(--paper),#0b2620);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.4}
+body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180deg,var(--paper),#081310);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.4}
 .mono{font-family:'Space Mono',monospace}
 .app{max-width:440px;margin:0 auto;min-height:100vh;padding:0 16px 120px;position:relative}
 
@@ -28,9 +29,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .head-actions{display:flex;align-items:center;gap:8px;flex:1 1 auto;justify-content:flex-end}
 .save-dot{font-size:10px;color:var(--muted);font-weight:600;opacity:0;transition:opacity .2s}
 .save-dot.on{opacity:1}
-.settings{flex:0 0 auto;padding:7px 14px;border-radius:8px;font-weight:700;border:none;cursor:pointer;font-size:13px;white-space:nowrap}
-.settings.btn-export{background:var(--jade-bright);color:#07100e}
-.settings.btn-editprofile{background:var(--surface);color:#fff;border:1px solid var(--hair)}
+.settings{flex:0 0 auto;padding:7px 14px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap;background:transparent;border:1px solid var(--hair);color:var(--sec-text)}
 
 .profiles{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:none}
 .profiles::-webkit-scrollbar{display:none}
@@ -54,10 +53,11 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 
 .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(255,255,255,0.04);border-radius:20px;box-shadow:var(--shadow)}
 .intake{padding:20px;margin-bottom:12px}
-.intake .eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--jade)}
+.intake .eyebrow{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--ink)}
+.intake .eyebrow i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--macro-protein);flex:0 0 auto}
 .intake .pmain{display:flex;align-items:baseline;gap:8px;margin:5px 0 2px}
 .intake .pmain .n{font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:var(--ink)}
-.intake .pmain .n b{color:var(--jade)}
+.intake .pmain .n b{color:var(--macro-protein)}
 .intake .pmain .u{font-size:14px;color:var(--muted);font-weight:600}
 .intake-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .intake-copy{flex:1 1 auto;min-width:0}
@@ -66,10 +66,9 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .ring-kcal{font-size:16px;font-weight:800;color:var(--ink);line-height:1.1}
 .ring-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
-.ring-legend{display:flex;gap:12px;margin-top:12px;font-size:10px;font-weight:700;color:var(--muted)}
-.ring-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
 .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.04)}
-.strip .cell .k{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.strip .cell .k{display:flex;align-items:center;gap:5px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.strip .cell .k i{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 auto}
 .strip .cell .v{font-size:14px;font-weight:700;margin-top:3px}
 .strip .cell .v span{font-size:10px;color:var(--muted);font-weight:600}
 
@@ -95,7 +94,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .entry .note{font-size:11px;color:var(--ink);font-weight:500;margin-top:4px;font-style:italic;opacity:.8}
 .entry .pgram{font-size:15px;font-weight:700;color:var(--jade);flex:0 0 auto}
 .entry .pgram small{font-size:10px;color:var(--muted);font-weight:600}
-.entry .rm{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:17px;cursor:pointer;line-height:1}
+.entry .rm{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--danger);font-size:17px;cursor:pointer;line-height:1}
 .entry .rm:active{background:var(--paper)}
 .entry.ex .pgram{color:var(--ochre);font-size:12px}
 .empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;font-weight:500;border:1px dashed rgba(255,255,255,0.03);border-radius:14px}
@@ -114,7 +113,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .btn{flex:1;border:none;border-radius:14px;padding:15px;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;transition:transform .1s}
 .btn:active{transform:scale(.97)}
 .btn-food{background:var(--jade);color:#07100e}
-.btn-ex{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,0.04)}
+.btn-ex{background:var(--surface);color:var(--ink);border:1px solid var(--hair)}
 
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
 .scrim.on{opacity:1;pointer-events:auto}
@@ -197,7 +196,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .wk-row .wc{font-family:'Space Mono',monospace;font-size:13px;font-weight:700}
 .wk-row .wc.zero{color:var(--ochre)}
 .wk-row .wc.ok{color:var(--jade)}
-.wk-row .rm{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:17px;cursor:pointer;line-height:1}
+.wk-row .rm{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--danger);font-size:17px;cursor:pointer;line-height:1}
 .wk-row .rm:active{background:var(--paper)}
 .wk-table-wrap{overflow-x:auto;border:1px solid var(--hair);border-radius:13px;margin-bottom:8px}
 .wk-table{border-collapse:collapse;width:100%;font-size:12px}
@@ -257,8 +256,8 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
     <div class="brand"><h1>Gigatrack</h1><span class="sub">by Pavixey</span></div>
     <div class="head-actions">
       <span class="save-dot" id="saveDot">saved ✓</span>
-      <button class="settings btn-export" type="button" onclick="openExport()">⬆ Export</button>
-      <button class="settings btn-editprofile" type="button" onclick="openTargets()">Edit Profile</button>
+      <button class="settings" type="button" onclick="openExport()">⬆ Export</button>
+      <button class="settings" type="button" onclick="openTargets()">Edit Profile</button>
     </div>
   </div>
 
@@ -292,11 +291,6 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
           <span class="ring-lbl">kcal</span>
         </div>
       </div>
-    </div>
-    <div class="ring-legend">
-      <span><i style="background:var(--jade)"></i>Protein</span>
-      <span><i style="background:var(--jade-bright)"></i>Carbs</span>
-      <span><i style="background:var(--ochre)"></i>Fat</span>
     </div>
     <div class="strip" id="strip"></div>
     <div class="micros-today">
@@ -700,7 +694,7 @@ function updateRing(tot){
     ring.style.background='conic-gradient(rgba(255,255,255,.08) 0 100%)';
   }else{
     const s1=pk/total*100,s2=s1+ck/total*100;
-    ring.style.background=`conic-gradient(var(--jade) 0% ${s1}%, var(--jade-bright) ${s1}% ${s2}%, var(--ochre) ${s2}% 100%)`;
+    ring.style.background=`conic-gradient(var(--macro-protein) 0% ${s1}%, var(--ochre) ${s1}% ${s2}%, var(--macro-fat) ${s2}% 100%)`;
   }
   document.getElementById('ringKcal').textContent=r0(tot.k);
 }
@@ -738,7 +732,7 @@ function renderDateBar(){
   document.getElementById('dateWords').textContent=fullDateWords(viewDate);
   document.getElementById('dateNums').textContent='('+fullDateNumeric(viewDate)+')';
   const suffix=viewDate===today?'today':dateLabelFor(viewDate).toLowerCase()==='yesterday'||dateLabelFor(viewDate).toLowerCase()==='tomorrow'?dateLabelFor(viewDate).toLowerCase():'on '+viewDate;
-  document.getElementById('eyebrowProtein').textContent='Protein '+suffix;
+  document.getElementById('eyebrowProtein').innerHTML='<i></i>Protein '+suffix;
   document.getElementById('microLbl').textContent='Micronutrient sources '+suffix;
   document.getElementById('foodHead').textContent='Food '+suffix;
   document.getElementById('exHead').textContent='Exercise '+suffix;
@@ -765,9 +759,9 @@ function renderAll(){
   document.getElementById('pNow').textContent=r0(tot.p);
   document.getElementById('pTgt').textContent=t.p;
   updateRing(tot);
-  const strip=[['Carbs',tot.c,t.c],['Fat',tot.f,t.f],['Sugar',tot.s,t.s],['kcal',tot.k,t.k]];
-  document.getElementById('strip').innerHTML=strip.map(([k,v,tg])=>
-    `<div class="cell"><div class="k">${k}</div><div class="v mono">${r0(v)}<span> / ${tg}</span></div></div>`).join('');
+  const strip=[['Carbs',tot.c,t.c,'var(--ochre)'],['Fat',tot.f,t.f,'var(--macro-fat)'],['Sugar',tot.s,t.s,'var(--macro-sugar)'],['kcal',tot.k,t.k,null]];
+  document.getElementById('strip').innerHTML=strip.map(([k,v,tg,col])=>
+    `<div class="cell"><div class="k">${col?`<i style="background:${col}"></i>`:''}${k}</div><div class="v mono">${r0(v)}<span> / ${tg}</span></div></div>`).join('');
   const hit=new Set();todayLog.forEach(e=>(e.m||[]).forEach(m=>hit.add(m)));
   const mt=document.getElementById('microToday');
   mt.innerHTML=hit.size?[...hit].map(m=>`<span class="mchip">${mLabel(m)}</span>`).join('')
