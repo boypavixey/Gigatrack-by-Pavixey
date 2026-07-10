@@ -373,6 +373,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
         <div class="field"><label>Added sugar g</label><input id="nfS" inputmode="decimal" value="0"></div>
         <div class="field"><label>kcal</label><input id="nfK" inputmode="decimal" value="0"></div>
         <div class="field"><label>Fibre g</label><input id="nfFib" inputmode="decimal" value="0"></div>
+        <div class="field"><label>Sodium mg (optional)</label><input id="nfNa" inputmode="decimal" placeholder="leave blank if unknown"></div>
       </div>
       <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 8px;text-transform:uppercase;letter-spacing:.04em">Micronutrient sources — tag what this food is a real source of</label>
       <div class="micro-select" id="nfMicros"></div>
@@ -819,7 +820,7 @@ const SODIUM_TARGET_MG=2300;
 function mapProfileRow(r){return {id:r.id,name:r.name,t:{p:+r.protein_target||0,c:+r.carbs_target||0,f:+r.fat_target||0,s:+r.sugar_target||0,k:+r.kcal_target||0},age:r.age==null?'':r.age,note:r.note||''};}
 function profileToRow(p){return {id:p.id,name:p.name,protein_target:p.t.p,carbs_target:p.t.c,fat_target:p.t.f,sugar_target:p.t.s,kcal_target:p.t.k,age:(p.age===''||p.age==null)?null:p.age,note:p.note||''};}
 function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,na:r.sodium==null?null:+r.sodium,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
-function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};}
+function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,sodium:f.na==null?null:f.na,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};}
 function mapFoodLogRow(r){return {id:r.id,foodId:r.food_id,name:r.name,multLabel:r.mult_label,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function mapExerciseLogRow(r){return {id:r.id,type:r.type,min:r.minutes,note:r.note||''};}
 function mapBodyRow(r){return {date:r.log_date,weight:r.weight,waist:r.waist};}
@@ -1140,6 +1141,7 @@ function openNewFood(){
   document.getElementById('saveFoodBtn').textContent='Save food';
   document.getElementById('nfName').value='';document.getElementById('nfPortion').value='';
   ['nfP','nfC','nfF','nfS','nfK','nfFib'].forEach(id=>document.getElementById(id).value='0');
+  document.getElementById('nfNa').value='';
   renderNfMicros();
   document.getElementById('foodBrowse').style.display='none';
   document.getElementById('newFood').style.display='';
@@ -1155,6 +1157,7 @@ function openEditFood(id){
   document.getElementById('nfP').value=f.p;document.getElementById('nfC').value=f.c;
   document.getElementById('nfF').value=f.f;document.getElementById('nfS').value=f.s;
   document.getElementById('nfK').value=f.k;document.getElementById('nfFib').value=f.fib||0;
+  document.getElementById('nfNa').value=f.na==null?'':f.na;
   renderNfMicros();
   document.getElementById('foodBrowse').style.display='none';
   document.getElementById('foodPick').style.display='none';
@@ -1186,10 +1189,12 @@ async function saveNewFood(){
   const name=document.getElementById('nfName').value.trim();
   if(!name){document.getElementById('nfName').focus();return;}
   const mAmt={};nfMicroSel.forEach(id=>{if(nfMicroAmt[id])mAmt[id]=nfMicroAmt[id];});
+  const naRaw=document.getElementById('nfNa').value.trim();
   const data={name,portion:document.getElementById('nfPortion').value.trim()||'1 serving',
     p:+document.getElementById('nfP').value||0,c:+document.getElementById('nfC').value||0,
     f:+document.getElementById('nfF').value||0,s:+document.getElementById('nfS').value||0,
     k:+document.getElementById('nfK').value||0,fib:+document.getElementById('nfFib').value||0,
+    na:naRaw===''?null:+naRaw,
     m:[...nfMicroSel],mAmt};
   if(editingFoodId){
     const res=await sbWrite(sb.from('foods').update(foodToRow({id:editingFoodId,...data})).eq('id',editingFoodId));
@@ -1198,6 +1203,7 @@ async function saveNewFood(){
     editingFoodId=null;
     document.getElementById('nfName').value='';document.getElementById('nfPortion').value='';
     ['nfP','nfC','nfF','nfS','nfK','nfFib'].forEach(id=>document.getElementById(id).value='0');
+    document.getElementById('nfNa').value='';
     showBrowse();renderFoodList();renderRecents();
     flashAdded('foodAddFlash',data.name+' updated ✓');
   } else {
@@ -1207,6 +1213,7 @@ async function saveNewFood(){
     foods=await loadFoods();
     document.getElementById('nfName').value='';document.getElementById('nfPortion').value='';
     ['nfP','nfC','nfF','nfS','nfK','nfFib'].forEach(id=>document.getElementById(id).value='0');
+    document.getElementById('nfNa').value='';
     pickFood(id);
   }
 }
