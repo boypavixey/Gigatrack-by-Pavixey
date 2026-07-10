@@ -13,7 +13,7 @@
   /* Dark theme variables (visual-only changes) */
   --paper:#0D1F1A;--surface:#14291F;--ink:#F5F7F5;--muted:#7A9689;--hair:#3A4E45;
   --jade:#2DD4A6;--jade-bright:#55E8C4;--ochre:#FBBF24;
-  --macro-protein:#5BC0F8;--macro-fat:#FB7185;--macro-sugar:#C084FC;--danger:#F87171;--sec-text:#CBD8D0;
+  --macro-protein:#5BC0F8;--macro-fat:#FB7185;--macro-sugar:#C084FC;--macro-sodium:#22D3EE;--danger:#F87171;--sec-text:#CBD8D0;
   --shadow:0 6px 18px rgba(0,0,0,.6),0 2px 4px rgba(0,0,0,.6);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -58,6 +58,9 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .intake .pmain .n{font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1;color:var(--ink)}
 .intake .pmain .n b{color:var(--macro-protein)}
 .intake .pmain .u{font-size:14px;color:var(--muted);font-weight:600}
+.intake .kcalMini{font-size:13px;font-weight:700;color:var(--sec-text)}
+.intake .kcalMini b{font-weight:800;color:var(--ink)}
+.intake .kcalMini .u{color:var(--muted);font-weight:600}
 .intake-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .intake-copy{flex:1 1 auto;min-width:0}
 .ring-wrap{position:relative;width:84px;height:84px;flex:0 0 auto}
@@ -95,6 +98,8 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .entry .pgram small{font-size:10px;color:var(--muted);font-weight:600}
 .entry .rm{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--danger);font-size:17px;cursor:pointer;line-height:1}
 .entry .rm:active{background:var(--paper)}
+.entry .edit{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+.entry .edit:active{background:var(--paper)}
 .entry.ex .pgram{color:var(--ochre);font-size:12px}
 .empty{padding:18px;text-align:center;color:var(--muted);font-size:13px;font-weight:500;border:1px dashed rgba(255,255,255,0.03);border-radius:14px}
 
@@ -293,6 +298,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
       <div class="intake-copy">
         <div class="eyebrow" id="eyebrowProtein">Protein today</div>
         <div class="pmain"><span class="n mono"><b id="pNow">0</b></span><span class="u">/ <span id="pTgt">145</span> g</span></div>
+        <div class="kcalMini mono"><b id="kcalNow">0</b><span class="u"> / <span id="kcalTgt">0</span> kcal</span></div>
       </div>
       <div class="ring-wrap">
         <div class="ring" id="ring"></div>
@@ -524,245 +530,295 @@ const SEED_PROFILES=[
   {id:'p4',name:'Family 4',t:{p:90,c:160,f:55,s:30,k:1600},age:'',note:''},
   {id:'p5',name:'Family 5',t:{p:80,c:150,f:50,s:30,k:1500},age:'',note:''}
 ];
+// na values on composite dishes are directional estimates from typical recipes, not verified data
 const SEED_FOODS=[
-  {id:'f_jasmine_rice',name:"Jasmine rice",portion:"100 g",p:2.7,c:28,f:0.3,s:0,k:130,fib:0,m:[]},
-  {id:'f_sticky_rice',name:"Sticky rice (khao niaw)",portion:"100 g",p:3.5,c:37,f:0.3,s:0,k:170,fib:0,m:[]},
-  {id:'f_brown_rice',name:"Brown rice",portion:"100 g",p:2.6,c:23,f:0.9,s:0,k:112,fib:0,m:[]},
-  {id:'f_rice_noodles',name:"Rice noodles (sen, cooked)",portion:"100 g",p:0.9,c:25,f:0.2,s:0,k:108,fib:0,m:[]},
-  {id:'f_egg_noodles',name:"Egg noodles (cooked)",portion:"100 g",p:4.5,c:25,f:1.5,s:0,k:138,fib:0,m:[]},
-  {id:'f_glass_mung_bean_noodles',name:"Glass/mung-bean noodles (cooked)",portion:"100 g",p:0.2,c:21,f:0,s:0,k:86,fib:0,m:[]},
-  {id:'f_rice_vermicelli',name:"Rice vermicelli (khao poon, cooked)",portion:"100 g",p:1.6,c:25,f:0.2,s:0,k:109,fib:0,m:[]},
-  {id:'f_baguette',name:"Baguette (Lao/French)",portion:"100 g",p:8,c:55,f:2,s:2,k:270,fib:0,m:[]},
-  {id:'f_white_bread',name:"White bread",portion:"1 slice ~30 g",p:2.5,c:15,f:1,s:1,k:80,fib:0,m:[]},
-  {id:'f_oats',name:"Oats (dry)",portion:"40 g",p:5,c:27,f:3,s:0,k:150,fib:0,m:[]},
-  {id:'f_pasta',name:"Pasta (cooked)",portion:"100 g",p:5,c:25,f:1,s:0,k:131,fib:0,m:[]},
-  {id:'f_potato',name:"Potato (boiled)",portion:"100 g",p:2,c:17,f:0.1,s:0,k:87,fib:0,m:["vitc", "potassium"],mAmt:{vitc:11,potassium:400}},
-  {id:'f_sweet_potato',name:"Sweet potato",portion:"100 g",p:1.6,c:20,f:0.1,s:0,k:86,fib:0,m:["vita"],mAmt:{vita:700}},
-  {id:'f_cassava',name:"Cassava (mun)",portion:"100 g",p:1.4,c:38,f:0.3,s:0,k:160,fib:0,m:[]},
-  {id:'f_taro',name:"Taro",portion:"100 g",p:1.5,c:26,f:0.1,s:0,k:112,fib:0,m:[]},
-  {id:'f_sweet_corn',name:"Sweet corn",portion:"100 g",p:3.3,c:19,f:1.5,s:0,k:96,fib:0,m:[]},
-  {id:'f_chicken_breast',name:"Chicken breast (skinless)",portion:"100 g",p:31,c:0,f:3.6,s:0,k:165,fib:0,m:["b12"],mAmt:{b12:0.3}},
-  {id:'f_chicken_thigh',name:"Chicken thigh (skinless)",portion:"100 g",p:26,c:0,f:10,s:0,k:209,fib:0,m:["b12"],mAmt:{b12:0.3}},
-  {id:'f_chicken',name:"Chicken (with skin)",portion:"100 g",p:27,c:0,f:15,s:0,k:240,fib:0,m:["b12"],mAmt:{b12:0.3}},
-  {id:'f_pork_loin',name:"Pork loin (lean)",portion:"100 g",p:27,c:0,f:8,s:0,k:190,fib:0,m:["b12", "zinc"],mAmt:{b12:0.7,zinc:1.9}},
-  {id:'f_pork_belly',name:"Pork belly",portion:"100 g",p:17,c:0,f:35,s:0,k:393,fib:0,m:["b12"],mAmt:{b12:0.6}},
-  {id:'f_minced_pork',name:"Minced pork",portion:"100 g",p:22,c:0,f:20,s:0,k:270,fib:0,m:["b12"],mAmt:{b12:0.7}},
-  {id:'f_beef',name:"Beef (lean)",portion:"100 g",p:26,c:0,f:11,s:0,k:210,fib:0,m:["iron", "b12", "zinc"],mAmt:{iron:2.6,b12:2.5,zinc:4.8}},
-  {id:'f_beef_2',name:"Beef (fatty/ribeye)",portion:"100 g",p:24,c:0,f:20,s:0,k:280,fib:0,m:["iron", "b12", "zinc"],mAmt:{iron:2.2,b12:1.9,zinc:4}},
-  {id:'f_duck',name:"Duck (with skin)",portion:"100 g",p:19,c:0,f:28,s:0,k:337,fib:0,m:["iron", "b12"],mAmt:{iron:2.7,b12:0.4}},
-  {id:'f_tilapia',name:"Tilapia",portion:"100 g",p:26,c:0,f:3,s:0,k:128,fib:0,m:["b12"],mAmt:{b12:1.6}},
-  {id:'f_catfish',name:"Catfish (pa)",portion:"100 g",p:18,c:0,f:8,s:0,k:150,fib:0,m:["omega3", "b12"],mAmt:{omega3:120,b12:1.2}},
-  {id:'f_snakehead_fish',name:"Snakehead fish (pa kho)",portion:"100 g",p:21,c:0,f:3,s:0,k:110,fib:0,m:["b12"],mAmt:{b12:1}},
-  {id:'f_mackerel',name:"Mackerel",portion:"100 g",p:19,c:0,f:14,s:0,k:205,fib:0,m:["omega3", "vitd", "b12"],mAmt:{omega3:2200,vitd:7,b12:8}},
-  {id:'f_salmon',name:"Salmon",portion:"100 g",p:22,c:0,f:13,s:0,k:208,fib:0,m:["omega3", "vitd", "b12"],mAmt:{omega3:2200,vitd:11,b12:3}},
-  {id:'f_canned_tuna',name:"Canned tuna (in water)",portion:"100 g",p:26,c:0,f:1,s:0,k:116,fib:0,m:["omega3", "b12"],mAmt:{omega3:250,b12:2.2}},
-  {id:'f_shrimp',name:"Shrimp",portion:"100 g",p:24,c:0,f:1,s:0,k:99,fib:0,m:["b12", "zinc"],mAmt:{b12:1.1,zinc:1.3}},
-  {id:'f_squid',name:"Squid",portion:"100 g",p:18,c:3,f:1.4,s:0,k:92,fib:0,m:["b12"],mAmt:{b12:1.3}},
-  {id:'f_egg',name:"Egg",portion:"1 large ~50 g",p:6,c:0.5,f:5,s:0,k:72,fib:0,m:["b12", "vitd"],mAmt:{b12:0.6,vitd:1.1}},
-  {id:'f_egg_white',name:"Egg white",portion:"1",p:3.6,c:0,f:0,s:0,k:17,fib:0,m:[]},
-  {id:'f_duck_egg',name:"Duck egg",portion:"1",p:9,c:1,f:10,s:0,k:130,fib:0,m:["b12", "vitd"],mAmt:{b12:3.2,vitd:2.6}},
-  {id:'f_firm_tofu',name:"Firm tofu",portion:"100 g",p:15,c:3,f:8,s:0,k:145,fib:0,m:["ca"],mAmt:{ca:150}},
-  {id:'f_tempeh',name:"Tempeh",portion:"100 g",p:19,c:9,f:11,s:0,k:192,fib:0,m:[]},
-  {id:'f_whole_milk',name:"Whole milk",portion:"250 ml",p:8,c:12,f:8,s:0,k:150,fib:0,m:["ca", "b12"],mAmt:{ca:280,b12:1.1}},
-  {id:'f_skim_milk',name:"Skim milk",portion:"250 ml",p:8,c:12,f:0.5,s:0,k:90,fib:0,m:["ca", "b12"],mAmt:{ca:300,b12:1.1}},
-  {id:'f_greek_yogurt',name:"Greek yogurt (plain)",portion:"170 g",p:17,c:6,f:5,s:0,k:130,fib:0,m:["ca", "b12"],mAmt:{ca:150,b12:1.1}},
-  {id:'f_plain_yogurt',name:"Plain yogurt",portion:"170 g",p:9,c:12,f:4,s:0,k:120,fib:0,m:["ca"],mAmt:{ca:230}},
-  {id:'f_cheddar_cheese',name:"Cheddar cheese",portion:"30 g",p:7,c:0.4,f:9,s:0,k:110,fib:0,m:["ca"],mAmt:{ca:200}},
-  {id:'f_butter',name:"Butter",portion:"1 tbsp",p:0,c:0,f:11,s:0,k:100,fib:0,m:[]},
-  {id:'f_lentils',name:"Lentils (cooked)",portion:"100 g",p:9,c:20,f:0.4,s:0,k:116,fib:0,m:["iron", "folate"],mAmt:{iron:3.3,folate:180}},
-  {id:'f_chickpeas',name:"Chickpeas (cooked)",portion:"100 g",p:9,c:27,f:2.6,s:0,k:164,fib:0,m:["iron"],mAmt:{iron:2.9}},
-  {id:'f_black_beans',name:"Black beans (cooked)",portion:"100 g",p:8,c:24,f:0.5,s:0,k:132,fib:0,m:["iron"],mAmt:{iron:2.1}},
-  {id:'f_edamame',name:"Edamame",portion:"100 g",p:11,c:10,f:5,s:0,k:122,fib:0,m:["folate"],mAmt:{folate:300}},
-  {id:'f_peanuts',name:"Peanuts",portion:"30 g",p:7,c:6,f:14,s:0,k:170,fib:0,m:["mg"],mAmt:{mg:50}},
-  {id:'f_almonds',name:"Almonds",portion:"30 g",p:6,c:6,f:14,s:0,k:170,fib:0,m:["mg"],mAmt:{mg:80}},
-  {id:'f_cashews',name:"Cashews",portion:"30 g",p:5,c:9,f:12,s:0,k:160,fib:0,m:["mg", "zinc"],mAmt:{mg:85,zinc:1.7}},
-  {id:'f_soy_milk',name:"Soy milk (unsweetened)",portion:"250 ml",p:7,c:4,f:4,s:0,k:80,fib:0,m:["ca"],mAmt:{ca:60}},
-  {id:'f_soy_milk_2',name:"Soy milk (sweetened)",portion:"250 ml",p:6,c:15,f:4,s:9,k:130,fib:0,m:[]},
-  {id:'f_vegetable_oil',name:"Vegetable oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:126,fib:0,m:[]},
-  {id:'f_olive_oil',name:"Olive oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:120,fib:0,m:[]},
-  {id:'f_sesame_oil',name:"Sesame oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:120,fib:0,m:[]},
-  {id:'f_coconut_milk',name:"Coconut milk (canned)",portion:"100 ml",p:2,c:3,f:21,s:1,k:197,fib:0,m:[]},
-  {id:'f_coconut_cream',name:"Coconut cream",portion:"2 tbsp",p:1,c:2,f:10,s:1,k:100,fib:0,m:[]},
-  {id:'f_peanut_butter',name:"Peanut butter",portion:"1 tbsp",p:4,c:3,f:8,s:1,k:95,fib:0,m:[]},
-  {id:'f_mayonnaise',name:"Mayonnaise",portion:"1 tbsp",p:0,c:0,f:10,s:0,k:90,fib:0,m:[]},
-  {id:'f_morning_glory',name:"Morning glory (pak boong)",portion:"100 g",p:2.6,c:3,f:0.2,s:0,k:19,fib:0,m:["vita", "vitc", "iron", "vitk"],mAmt:{vita:190,vitc:55,iron:2.5,vitk:250}},
-  {id:'f_cabbage',name:"Cabbage",portion:"100 g",p:1.3,c:6,f:0.1,s:0,k:25,fib:0,m:["vitc"],mAmt:{vitc:36}},
-  {id:'f_chinese_broccoli',name:"Chinese broccoli (kai lan)",portion:"100 g",p:3,c:4,f:0.7,s:0,k:30,fib:0,m:["vita", "vitc", "vitk", "ca"],mAmt:{vita:250,vitc:45,vitk:400,ca:200}},
-  {id:'f_pak_choi_bok_choy',name:"Pak choi / bok choy",portion:"100 g",p:1.5,c:2,f:0.2,s:0,k:13,fib:0,m:["vita", "vitc"],mAmt:{vita:240,vitc:45}},
-  {id:'f_long_beans',name:"Long beans",portion:"100 g",p:3,c:8,f:0.4,s:0,k:47,fib:0,m:["folate"],mAmt:{folate:60}},
-  {id:'f_carrot',name:"Carrot",portion:"100 g",p:0.9,c:10,f:0.2,s:0,k:41,fib:0,m:["vita"],mAmt:{vita:830}},
-  {id:'f_tomato',name:"Tomato",portion:"100 g",p:0.9,c:4,f:0.2,s:0,k:18,fib:0,m:["vitc", "vita"],mAmt:{vitc:14,vita:42}},
-  {id:'f_cucumber',name:"Cucumber",portion:"100 g",p:0.7,c:4,f:0.1,s:0,k:16,fib:0,m:["vitc"],mAmt:{vitc:3}},
-  {id:'f_eggplant',name:"Eggplant",portion:"100 g",p:1,c:6,f:0.2,s:0,k:25,fib:0,m:[]},
-  {id:'f_pumpkin',name:"Pumpkin",portion:"100 g",p:1,c:7,f:0.1,s:0,k:26,fib:0,m:["vita"],mAmt:{vita:250}},
-  {id:'f_bamboo_shoots',name:"Bamboo shoots",portion:"100 g",p:2.6,c:5,f:0.3,s:0,k:27,fib:0,m:[]},
-  {id:'f_mushrooms',name:"Mushrooms",portion:"100 g",p:3,c:3,f:0.3,s:0,k:22,fib:0,m:[]},
-  {id:'f_lettuce',name:"Lettuce",portion:"100 g",p:1.4,c:3,f:0.2,s:0,k:15,fib:0,m:["vita", "vitk"],mAmt:{vita:150,vitk:80}},
-  {id:'f_bell_pepper',name:"Bell pepper",portion:"100 g",p:1,c:6,f:0.3,s:0,k:31,fib:0,m:["vitc", "vita"],mAmt:{vitc:100,vita:80}},
-  {id:'f_onion',name:"Onion",portion:"100 g",p:1.1,c:9,f:0.1,s:0,k:40,fib:0,m:[]},
-  {id:'f_leafy_greens',name:"Leafy greens (spinach-type)",portion:"100 g",p:2.9,c:3.6,f:0.4,s:0,k:23,fib:0,m:["iron", "vita", "vitk", "folate"],mAmt:{iron:2.7,vita:470,vitk:480,folate:190}},
-  {id:'f_okra',name:"Okra",portion:"100 g",p:1.9,c:7,f:0.2,s:0,k:33,fib:0,m:["vitc"],mAmt:{vitc:23}},
-  {id:'f_banana',name:"Banana",portion:"1 med ~120 g",p:1.3,c:27,f:0.4,s:0,k:105,fib:0,m:["potassium"],mAmt:{potassium:430}},
-  {id:'f_mango',name:"Mango",portion:"100 g",p:0.8,c:15,f:0.4,s:0,k:60,fib:0,m:["vitc", "vita"],mAmt:{vitc:36,vita:54}},
-  {id:'f_papaya',name:"Papaya",portion:"100 g",p:0.5,c:11,f:0.3,s:0,k:43,fib:0,m:["vitc", "vita"],mAmt:{vitc:61,vita:47}},
-  {id:'f_pineapple',name:"Pineapple",portion:"100 g",p:0.5,c:13,f:0.1,s:0,k:50,fib:0,m:["vitc"],mAmt:{vitc:48}},
-  {id:'f_watermelon',name:"Watermelon",portion:"100 g",p:0.6,c:8,f:0.2,s:0,k:30,fib:0,m:["vitc", "vita"],mAmt:{vitc:8,vita:28}},
-  {id:'f_cantaloupe',name:"Cantaloupe",portion:"100 g",p:0.8,c:8,f:0.2,s:0,k:34,fib:0,m:["vitc", "vita"],mAmt:{vitc:37,vita:170}},
-  {id:'f_dragon_fruit',name:"Dragon fruit",portion:"100 g",p:1.2,c:13,f:0,s:0,k:60,fib:0,m:["vitc"],mAmt:{vitc:9}},
-  {id:'f_guava',name:"Guava",portion:"100 g",p:2.6,c:14,f:1,s:0,k:68,fib:0,m:["vitc"],mAmt:{vitc:228}},
-  {id:'f_orange',name:"Orange",portion:"1 med",p:1,c:15,f:0.2,s:0,k:62,fib:0,m:["vitc", "folate"],mAmt:{vitc:70,folate:40}},
-  {id:'f_pomelo',name:"Pomelo",portion:"100 g",p:0.8,c:10,f:0,s:0,k:38,fib:0,m:["vitc"],mAmt:{vitc:61}},
-  {id:'f_apple',name:"Apple",portion:"1 med",p:0.5,c:25,f:0.3,s:0,k:95,fib:0,m:[]},
-  {id:'f_grapes',name:"Grapes",portion:"100 g",p:0.7,c:18,f:0.2,s:0,k:69,fib:0,m:["vitc"],mAmt:{vitc:4}},
-  {id:'f_longan',name:"Longan",portion:"100 g",p:1,c:15,f:0,s:0,k:60,fib:0,m:["vitc"],mAmt:{vitc:80}},
-  {id:'f_rambutan',name:"Rambutan",portion:"100 g",p:0.7,c:21,f:0.2,s:0,k:75,fib:0,m:["vitc"],mAmt:{vitc:50}},
-  {id:'f_coconut_flesh',name:"Coconut flesh",portion:"50 g",p:1.7,c:7,f:17,s:0,k:180,fib:0,m:[]},
-  {id:'f_fish_sauce',name:"Fish sauce",portion:"1 tbsp",p:1,c:1,f:0,s:0,k:10,fib:0,m:[]},
-  {id:'f_soy_sauce',name:"Soy sauce",portion:"1 tbsp",p:1,c:1,f:0,s:0,k:10,fib:0,m:[]},
-  {id:'f_oyster_sauce',name:"Oyster sauce",portion:"1 tbsp",p:0.5,c:4,f:0,s:2,k:25,fib:0,m:[]},
-  {id:'f_padaek',name:"Padaek (fermented fish)",portion:"1 tbsp",p:2,c:1,f:0,s:0,k:15,fib:0,m:[]},
-  {id:'f_sweet_chili_sauce',name:"Sweet chili sauce",portion:"1 tbsp",p:0,c:8,f:0,s:7,k:35,fib:0,m:[]},
-  {id:'f_sriracha',name:"Sriracha",portion:"1 tbsp",p:0,c:4,f:0,s:3,k:15,fib:0,m:[]},
-  {id:'f_ketchup',name:"Ketchup",portion:"1 tbsp",p:0,c:4,f:0,s:3,k:17,fib:0,m:[]},
-  {id:'f_sugar',name:"Sugar",portion:"1 tsp",p:0,c:4,f:0,s:4,k:16,fib:0,m:[]},
-  {id:'f_larb_moo',name:"Larb moo (pork larb)",portion:"~150 g",p:22,c:6,f:16,s:1,k:250,fib:0,m:["iron", "b12"],mAmt:{iron:1.5,b12:0.6}},
-  {id:'f_larb_gai',name:"Larb gai (chicken larb)",portion:"~150 g",p:25,c:5,f:10,s:1,k:210,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_larb_pa',name:"Larb pa (fish larb)",portion:"~150 g",p:23,c:5,f:8,s:1,k:190,fib:0,m:["omega3", "b12"],mAmt:{omega3:400,b12:1.8}},
-  {id:'f_larb_neua',name:"Larb neua (beef larb)",portion:"~150 g",p:24,c:5,f:15,s:1,k:250,fib:0,m:["iron", "b12", "zinc"],mAmt:{iron:3,b12:2,zinc:4}},
-  {id:'f_nam_tok',name:"Nam tok (grilled beef salad)",portion:"~150 g",p:24,c:6,f:14,s:1,k:240,fib:0,m:["iron", "b12"],mAmt:{iron:2.6,b12:1.8}},
-  {id:'f_koi',name:"Koi (raw minced meat salad)",portion:"~150 g",p:22,c:5,f:14,s:1,k:230,fib:0,m:["iron"],mAmt:{iron:2.2}},
-  {id:'f_tam_mak_hoong',name:"Tam mak hoong (papaya salad)",portion:"~200 g",p:3,c:18,f:2,s:8,k:110,fib:0,m:["vitc", "vita"],mAmt:{vitc:35,vita:35}},
-  {id:'f_tam_maak_taeng',name:"Tam maak taeng (cucumber salad)",portion:"~150 g",p:2,c:8,f:1.5,s:4,k:60,fib:0,m:["vitc"],mAmt:{vitc:12}},
-  {id:'f_tam_khao_poon',name:"Tam khao poon (papaya + noodle)",portion:"~250 g",p:5,c:40,f:3,s:6,k:220,fib:0,m:["vitc"],mAmt:{vitc:30}},
-  {id:'f_nam_khao',name:"Nam khao (crispy rice salad)",portion:"~200 g",p:14,c:35,f:16,s:3,k:340,fib:0,m:[]},
-  {id:'f_ping_gai',name:"Ping gai (grilled chicken)",portion:"1/4 bird ~150 g",p:30,c:3,f:14,s:2,k:260,fib:0,m:["b12"],mAmt:{b12:0.4}},
-  {id:'f_ping_pa',name:"Ping pa (grilled fish)",portion:"~150 g",p:30,c:0,f:9,s:0,k:200,fib:0,m:["omega3", "vitd", "b12"],mAmt:{omega3:220,vitd:0.9,b12:2.2}},
-  {id:'f_ping_seen',name:"Ping seen (grilled beef skewer)",portion:"100 g",p:26,c:1,f:12,s:0,k:210,fib:0,m:["iron", "b12", "zinc"],mAmt:{iron:2.5,b12:2.3,zinc:4.5}},
-  {id:'f_mok_pa',name:"Mok pa (steamed fish, banana leaf)",portion:"1 parcel ~150 g",p:22,c:5,f:12,s:1,k:220,fib:0,m:["omega3", "vitd", "b12"],mAmt:{omega3:500,vitd:5,b12:2}},
-  {id:'f_sai_oua',name:"Sai oua (Lao herb sausage)",portion:"100 g",p:15,c:3,f:25,s:1,k:300,fib:0,m:["b12", "iron"],mAmt:{b12:0.6,iron:1.2}},
-  {id:'f_sien_savanh',name:"Sien savanh (Lao beef jerky)",portion:"50 g",p:20,c:6,f:14,s:4,k:230,fib:0,m:["iron", "b12"],mAmt:{iron:2,b12:1.5}},
-  {id:'f_khaep_moo',name:"Khaep moo (pork rinds)",portion:"30 g",p:17,c:0,f:13,s:0,k:190,fib:0,m:[]},
-  {id:'f_or_lam',name:"Or lam (Luang Prabang stew)",portion:"1 bowl ~300 g",p:18,c:12,f:16,s:2,k:280,fib:0,m:["vita"],mAmt:{vita:100}},
-  {id:'f_kaeng_no_mai',name:"Kaeng no mai (bamboo shoot soup)",portion:"1 bowl",p:8,c:10,f:6,s:1,k:130,fib:0,m:[]},
-  {id:'f_kaeng_som',name:"Kaeng som (sour soup)",portion:"1 bowl",p:12,c:10,f:4,s:2,k:130,fib:0,m:["vitc"],mAmt:{vitc:20}},
-  {id:'f_soup_gai',name:"Soup gai (chicken soup)",portion:"1 bowl",p:18,c:6,f:8,s:1,k:170,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_tom',name:"Tom (clear meat + veg soup)",portion:"1 bowl",p:10,c:6,f:5,s:1,k:110,fib:0,m:[]},
-  {id:'f_khao_piak_sen',name:"Khao piak sen (rice noodle soup)",portion:"1 bowl ~400 g",p:20,c:45,f:8,s:1,k:330,fib:0,m:["b12"],mAmt:{b12:0.8}},
-  {id:'f_khao_piak_khao',name:"Khao piak khao (rice porridge)",portion:"1 bowl",p:10,c:35,f:5,s:1,k:220,fib:0,m:[]},
-  {id:'f_khao_poon',name:"Khao poon (vermicelli, red broth)",portion:"1 bowl",p:18,c:50,f:12,s:2,k:390,fib:0,m:["vita", "iron"],mAmt:{vita:80,iron:2.5}},
-  {id:'f_feu_pho',name:"Feu / pho (beef noodle soup)",portion:"1 bowl",p:22,c:48,f:9,s:3,k:360,fib:0,m:["iron", "b12"],mAmt:{iron:2.8,b12:1.5}},
-  {id:'f_khua_mee',name:"Khua mee (Lao fried noodles)",portion:"1 plate ~300 g",p:14,c:55,f:18,s:4,k:430,fib:0,m:[]},
-  {id:'f_kai_pam_kai_jeow',name:"Kai pam / kai jeow (Lao omelet)",portion:"2 eggs + oil",p:13,c:2,f:16,s:0,k:210,fib:0,m:["b12", "vitd"],mAmt:{b12:1.1,vitd:2}},
-  {id:'f_khua_khai',name:"Khua khai (egg + veg stir-fry)",portion:"1 serving",p:12,c:6,f:14,s:2,k:200,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_pak_boong_fai_daeng',name:"Pak boong fai daeng (morning glory)",portion:"1 cup ~150 g",p:3,c:7,f:8,s:2,k:100,fib:0,m:["vita", "vitc", "iron", "vitk"],mAmt:{vita:200,vitc:40,iron:2.5,vitk:300}},
-  {id:'f_jeow_bong',name:"Jeow bong (sweet chili paste)",portion:"2 tbsp",p:1,c:6,f:4,s:5,k:70,fib:0,m:["vita"],mAmt:{vita:30}},
-  {id:'f_jeow_mak_len',name:"Jeow mak len (tomato dip)",portion:"2 tbsp",p:1,c:3,f:1,s:1,k:25,fib:0,m:["vitc", "vita"],mAmt:{vitc:8,vita:25}},
-  {id:'f_jeow_mak_keua',name:"Jeow mak keua (eggplant dip)",portion:"2 tbsp",p:1,c:3,f:2,s:1,k:30,fib:0,m:[]},
-  {id:'f_khao_niaw_mak_muang',name:"Khao niaw mak muang (mango sticky rice)",portion:"~200 g",p:5,c:65,f:10,s:25,k:380,fib:0,m:["vitc", "vita"],mAmt:{vitc:25,vita:50}},
-  {id:'f_nam_van',name:"Nam van (sweet coconut dessert)",portion:"1 cup",p:3,c:40,f:12,s:25,k:290,fib:0,m:[]},
-  {id:'f_kai_pen',name:"Kai pen (fried river weed)",portion:"30 g",p:5,c:8,f:10,s:0,k:130,fib:0,m:["iron"],mAmt:{iron:2}},
-  {id:'f_khanom',name:"Khanom (coconut rice cake)",portion:"1 piece",p:2,c:20,f:5,s:8,k:140,fib:0,m:[]},
-  {id:'f_pad_kaphrao_gai_rice',name:"Pad kaphrao gai + rice (basil chicken rice)",portion:"1 plate",p:28,c:55,f:18,s:4,k:500,fib:0,m:["b12"],mAmt:{b12:0.6}},
-  {id:'f_pad_thai',name:"Pad thai",portion:"1 plate",p:18,c:60,f:14,s:10,k:450,fib:0,m:[]},
-  {id:'f_pad_see_ew',name:"Pad see ew",portion:"1 plate",p:16,c:58,f:16,s:6,k:460,fib:0,m:[]},
-  {id:'f_khao_pad',name:"Khao pad (fried rice)",portion:"1 plate",p:16,c:60,f:16,s:4,k:460,fib:0,m:[]},
-  {id:'f_khao_man_gai',name:"Khao man gai (chicken rice)",portion:"1 plate",p:30,c:60,f:16,s:3,k:500,fib:0,m:["b12"],mAmt:{b12:0.7}},
-  {id:'f_khao_soi',name:"Khao soi",portion:"1 bowl",p:22,c:55,f:28,s:6,k:560,fib:0,m:[]},
-  {id:'f_green_curry_chicken',name:"Green curry chicken (no rice)",portion:"1 bowl",p:20,c:10,f:22,s:4,k:320,fib:0,m:["vita"],mAmt:{vita:80}},
-  {id:'f_red_curry',name:"Red curry (no rice)",portion:"1 bowl",p:20,c:10,f:22,s:4,k:320,fib:0,m:[]},
-  {id:'f_massaman_curry',name:"Massaman curry",portion:"1 bowl",p:22,c:15,f:24,s:6,k:380,fib:0,m:[]},
-  {id:'f_tom_yum_goong',name:"Tom yum goong",portion:"1 bowl",p:18,c:8,f:8,s:2,k:170,fib:0,m:["vitc"],mAmt:{vitc:20}},
-  {id:'f_tom_kha_gai',name:"Tom kha gai",portion:"1 bowl",p:16,c:10,f:18,s:3,k:260,fib:0,m:[]},
-  {id:'f_som_tam',name:"Som tam (Thai papaya salad)",portion:"1 plate",p:4,c:20,f:3,s:10,k:130,fib:0,m:["vitc", "vita"],mAmt:{vitc:35,vita:35}},
-  {id:'f_moo_ping',name:"Moo ping (grilled pork skewers)",portion:"2 sticks",p:16,c:6,f:14,s:6,k:220,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_satay_chicken_peanut_sauce',name:"Satay chicken + peanut sauce",portion:"4 sticks",p:24,c:10,f:16,s:8,k:290,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_thai_iced_tea',name:"Thai iced tea",portion:"1 glass",p:2,c:40,f:6,s:35,k:260,fib:0,m:[]},
-  {id:'f_pho_bo',name:"Pho bo (beef)",portion:"1 bowl",p:25,c:50,f:8,s:3,k:380,fib:0,m:["iron", "b12"],mAmt:{iron:2.8,b12:1.5}},
-  {id:'f_pho_ga',name:"Pho ga (chicken)",portion:"1 bowl",p:24,c:48,f:6,s:3,k:350,fib:0,m:["b12"],mAmt:{b12:0.8}},
-  {id:'f_banh_mi',name:"Banh mi",portion:"1 sandwich",p:18,c:50,f:16,s:6,k:420,fib:0,m:[]},
-  {id:'f_goi_cuon',name:"Goi cuon (fresh spring rolls)",portion:"2 rolls",p:10,c:30,f:3,s:4,k:200,fib:0,m:[]},
-  {id:'f_cha_gio_nem',name:"Cha gio / nem (fried spring rolls)",portion:"3 rolls",p:8,c:25,f:14,s:3,k:260,fib:0,m:[]},
-  {id:'f_com_tam',name:"Com tam (broken rice + grilled pork)",portion:"1 plate",p:28,c:65,f:18,s:6,k:540,fib:0,m:["b12"],mAmt:{b12:0.7}},
-  {id:'f_bun_thit_nuong',name:"Bun thit nuong (vermicelli + pork)",portion:"1 bowl",p:24,c:55,f:16,s:8,k:460,fib:0,m:["b12"],mAmt:{b12:0.6}},
-  {id:'f_bun_bo_hue',name:"Bun bo hue",portion:"1 bowl",p:24,c:50,f:14,s:3,k:420,fib:0,m:["iron", "b12"],mAmt:{iron:2.5,b12:1.4}},
-  {id:'f_vietnamese_iced_coffee',name:"Vietnamese iced coffee (ca phe sua da)",portion:"1 glass",p:2,c:25,f:5,s:22,k:160,fib:0,m:[]},
-  {id:'f_egg_fried_rice',name:"Egg fried rice",portion:"1 plate",p:12,c:60,f:16,s:2,k:440,fib:0,m:[]},
-  {id:'f_chow_mein',name:"Chow mein",portion:"1 plate",p:16,c:55,f:18,s:6,k:460,fib:0,m:[]},
-  {id:'f_sweet_and_sour_pork',name:"Sweet & sour pork",portion:"1 serving",p:20,c:40,f:22,s:20,k:440,fib:0,m:[]},
-  {id:'f_kung_pao_chicken',name:"Kung pao chicken",portion:"1 serving",p:26,c:18,f:22,s:10,k:380,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_mapo_tofu',name:"Mapo tofu",portion:"1 serving",p:16,c:12,f:18,s:3,k:280,fib:0,m:[]},
-  {id:'f_char_siu_pork',name:"Char siu pork",portion:"100 g",p:20,c:12,f:14,s:10,k:250,fib:0,m:["b12"],mAmt:{b12:0.6}},
-  {id:'f_steamed_dumplings',name:"Steamed dumplings",portion:"6 pcs",p:12,c:30,f:8,s:2,k:240,fib:0,m:[]},
-  {id:'f_wonton_soup',name:"Wonton soup",portion:"6 wontons",p:14,c:25,f:8,s:2,k:220,fib:0,m:[]},
-  {id:'f_steamed_bao',name:"Steamed bao (pork bun)",portion:"1",p:7,c:30,f:6,s:8,k:200,fib:0,m:[]},
-  {id:'f_stir_fried_greens_w_garlic',name:"Stir-fried greens w/ garlic",portion:"1 plate",p:4,c:8,f:10,s:2,k:130,fib:0,m:["vita", "vitc", "vitk"],mAmt:{vita:250,vitc:30,vitk:250}},
-  {id:'f_congee',name:"Congee (plain)",portion:"1 bowl",p:4,c:30,f:1,s:0,k:140,fib:0,m:[]},
-  {id:'f_sushi',name:"Sushi (raw fish)",portion:"6 pcs",p:16,c:55,f:6,s:6,k:330,fib:0,m:["omega3"],mAmt:{omega3:600}},
-  {id:'f_sushi_roll',name:"Sushi roll (cooked / California)",portion:"6 pcs",p:10,c:45,f:8,s:8,k:300,fib:0,m:[]},
-  {id:'f_ramen',name:"Ramen",portion:"1 bowl",p:24,c:60,f:20,s:4,k:540,fib:0,m:["b12"],mAmt:{b12:1}},
-  {id:'f_chicken_katsu',name:"Chicken katsu",portion:"1 serving",p:28,c:25,f:22,s:3,k:420,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_chicken_teriyaki',name:"Chicken teriyaki",portion:"1 serving",p:28,c:18,f:14,s:12,k:320,fib:0,m:["b12"],mAmt:{b12:0.6}},
-  {id:'f_gyoza',name:"Gyoza",portion:"6 pcs",p:10,c:24,f:10,s:2,k:220,fib:0,m:[]},
-  {id:'f_miso_soup',name:"Miso soup",portion:"1 bowl",p:4,c:6,f:2,s:1,k:60,fib:0,m:[]},
-  {id:'f_bibimbap',name:"Bibimbap",portion:"1 bowl",p:22,c:70,f:16,s:6,k:560,fib:0,m:["iron", "vita"],mAmt:{iron:2.5,vita:300}},
-  {id:'f_korean_fried_chicken',name:"Korean fried chicken",portion:"5 pcs",p:26,c:30,f:28,s:12,k:500,fib:0,m:[]},
-  {id:'f_tteokbokki',name:"Tteokbokki",portion:"1 serving",p:8,c:70,f:8,s:16,k:400,fib:0,m:[]},
-  {id:'f_kimchi',name:"Kimchi",portion:"50 g",p:1,c:3,f:0,s:2,k:15,fib:0,m:["vitc"],mAmt:{vitc:7}},
-  {id:'f_scrambled_eggs',name:"Scrambled eggs (butter)",portion:"2 eggs",p:13,c:1,f:16,s:0,k:210,fib:0,m:["b12", "vitd"],mAmt:{b12:1.1,vitd:2}},
-  {id:'f_bacon',name:"Bacon",portion:"2 strips",p:6,c:0,f:7,s:0,k:90,fib:0,m:[]},
-  {id:'f_toast_butter',name:"Toast + butter",portion:"1 slice",p:3,c:15,f:5,s:1,k:120,fib:0,m:[]},
-  {id:'f_pancakes_syrup',name:"Pancakes + syrup",portion:"2",p:8,c:50,f:10,s:20,k:350,fib:0,m:[]},
-  {id:'f_croissant',name:"Croissant",portion:"1",p:5,c:26,f:14,s:6,k:260,fib:0,m:[]},
-  {id:'f_granola_milk',name:"Granola + milk",portion:"1 bowl",p:10,c:50,f:12,s:18,k:350,fib:0,m:[]},
-  {id:'f_cereal_milk',name:"Cereal + milk",portion:"1 bowl",p:9,c:45,f:6,s:15,k:280,fib:0,m:[]},
-  {id:'f_grilled_chicken_breast',name:"Grilled chicken breast",portion:"150 g",p:46,c:0,f:5,s:0,k:240,fib:0,m:["b12"],mAmt:{b12:0.45}},
-  {id:'f_beef_steak',name:"Beef steak",portion:"150 g",p:39,c:0,f:17,s:0,k:320,fib:0,m:["iron", "b12", "zinc"],mAmt:{iron:3.5,b12:2.8,zinc:5.5}},
-  {id:'f_baked_salmon',name:"Baked salmon",portion:"150 g",p:33,c:0,f:20,s:0,k:310,fib:0,m:["omega3", "vitd", "b12"],mAmt:{omega3:3000,vitd:15,b12:4.5}},
-  {id:'f_cheeseburger',name:"Cheeseburger",portion:"1",p:25,c:35,f:28,s:8,k:500,fib:0,m:["iron", "b12"],mAmt:{iron:2,b12:1.5}},
-  {id:'f_pizza',name:"Pizza",portion:"2 slices",p:20,c:60,f:22,s:6,k:520,fib:0,m:["ca"],mAmt:{ca:250}},
-  {id:'f_spaghetti_bolognese',name:"Spaghetti bolognese",portion:"1 plate",p:24,c:60,f:18,s:6,k:500,fib:0,m:["iron", "b12"],mAmt:{iron:2.5,b12:1.5}},
-  {id:'f_spaghetti_carbonara',name:"Spaghetti carbonara",portion:"1 plate",p:22,c:60,f:26,s:4,k:580,fib:0,m:[]},
-  {id:'f_ham_and_cheese_sandwich',name:"Ham & cheese sandwich",portion:"1",p:20,c:40,f:16,s:5,k:380,fib:0,m:["ca"],mAmt:{ca:200}},
-  {id:'f_caesar_salad_w_chicken',name:"Caesar salad w/ chicken",portion:"1",p:30,c:12,f:26,s:3,k:400,fib:0,m:["b12"],mAmt:{b12:0.4}},
-  {id:'f_french_fries',name:"French fries",portion:"medium",p:4,c:48,f:17,s:0,k:360,fib:0,m:[]},
-  {id:'f_roast_vegetables',name:"Roast vegetables",portion:"1 cup",p:3,c:20,f:7,s:5,k:150,fib:0,m:["vita", "vitc"],mAmt:{vita:300,vitc:25}},
-  {id:'f_fried_chicken',name:"Fried chicken",portion:"2 pcs",p:30,c:16,f:28,s:0,k:430,fib:0,m:["b12"],mAmt:{b12:0.5}},
-  {id:'f_hot_dog',name:"Hot dog",portion:"1",p:10,c:25,f:17,s:5,k:290,fib:0,m:[]},
-  {id:'f_protein_bar',name:"Protein bar",portion:"1",p:20,c:25,f:8,s:10,k:240,fib:0,m:[]},
-  {id:'f_mixed_nuts_snack',name:"Mixed nuts snack",portion:"30 g",p:5,c:6,f:15,s:0,k:180,fib:0,m:["mg"],mAmt:{mg:70}},
-  {id:'f_hummus',name:"Hummus",portion:"2 tbsp",p:2,c:6,f:5,s:0,k:80,fib:0,m:[]},
-  {id:'f_crackers',name:"Crackers",portion:"30 g",p:3,c:22,f:4,s:2,k:130,fib:0,m:[]},
-  {id:'f_seaweed_snack',name:"Seaweed snack",portion:"5 g",p:1,c:1,f:1,s:0,k:15,fib:0,m:["iodine"],mAmt:{iodine:75}},
-  {id:'f_dark_chocolate',name:"Dark chocolate",portion:"30 g",p:2,c:13,f:11,s:10,k:170,fib:0,m:["mg"],mAmt:{mg:65}},
-  {id:'f_ice_cream',name:"Ice cream",portion:"1 scoop",p:3,c:20,f:9,s:18,k:170,fib:0,m:[]},
-  {id:'f_chocolate_cake',name:"Chocolate cake",portion:"1 slice",p:4,c:50,f:18,s:35,k:400,fib:0,m:[]},
-  {id:'f_cookies',name:"Cookies",portion:"2",p:2,c:20,f:7,s:10,k:150,fib:0,m:[]},
-  {id:'f_potato_chips',name:"Potato chips",portion:"30 g",p:2,c:15,f:10,s:0,k:160,fib:0,m:[]},
-  {id:'f_banana_chips',name:"Banana chips",portion:"30 g",p:0.5,c:18,f:10,s:6,k:160,fib:0,m:[]},
-  {id:'f_sundried_lao_banana',name:"Sundried Lao banana",portion:"3 small ~45 g",p:1.5,c:36,f:0.5,s:18,k:150,fib:0,m:["potassium"],mAmt:{potassium:280}},
-  {id:'f_water',name:"Water",portion:"any",p:0,c:0,f:0,s:0,k:0,fib:0,m:[]},
-  {id:'f_black_coffee',name:"Black coffee (no sugar)",portion:"1 cup",p:0,c:0,f:0,s:0,k:5,fib:0,m:[]},
-  {id:'f_americano',name:"Americano",portion:"1",p:0,c:0,f:0,s:0,k:10,fib:0,m:[]},
-  {id:'f_latte',name:"Latte (regular milk)",portion:"1 med",p:8,c:12,f:8,s:0,k:150,fib:0,m:["ca"],mAmt:{ca:150}},
-  {id:'f_cappuccino',name:"Cappuccino",portion:"1",p:6,c:9,f:6,s:0,k:110,fib:0,m:["ca"],mAmt:{ca:80}},
-  {id:'f_lao_coffee_sweetened',name:"Lao coffee, sweetened (oliang)",portion:"1 glass",p:2,c:30,f:6,s:28,k:180,fib:0,m:[]},
-  {id:'f_orange_juice',name:"Orange juice",portion:"250 ml",p:2,c:26,f:0,s:0,k:112,fib:0,m:["vitc"],mAmt:{vitc:110}},
-  {id:'f_fruit_smoothie',name:"Fruit smoothie (banana/mango)",portion:"1 med",p:3,c:45,f:2,s:15,k:250,fib:0,m:["vitc"],mAmt:{vitc:35}},
-  {id:'f_coconut_water',name:"Coconut water",portion:"1 cup",p:1,c:9,f:0,s:6,k:45,fib:0,m:["potassium"],mAmt:{potassium:600}},
-  {id:'f_bubble_tea',name:"Bubble tea",portion:"1 med",p:3,c:60,f:6,s:45,k:350,fib:0,m:[]},
-  {id:'f_cola_soft_drink',name:"Cola / soft drink",portion:"330 ml",p:0,c:39,f:0,s:39,k:140,fib:0,m:[]},
-  {id:'f_sports_drink',name:"Sports drink",portion:"500 ml",p:0,c:30,f:0,s:28,k:130,fib:0,m:[]},
-  {id:'f_beer',name:"Beer",portion:"330 ml",p:2,c:12,f:0,s:0,k:150,fib:0,m:[]},
-  {id:'f_fitwhey_baam_iso_whey_isolate',name:"Fitwhey BAAM ISO whey isolate",portion:"1 scoop",p:30,c:0,f:1,s:0,k:130,fib:0,m:[]},
-  {id:'f_baam_intra_juice',name:"BAAM Intra Juice (BCAA/electrolyte)",portion:"1 serving",p:1,c:5,f:0,s:2,k:25,fib:0,m:[]},
-  {id:'f_tofusan_sesame_soy_protein_drink',name:"Tofusan sesame soy protein drink",portion:"1 bottle",p:8,c:18,f:4,s:9,k:140,fib:0,m:[]}
+  {id:'f_jasmine_rice',name:"Jasmine rice",portion:"100 g",p:2.7,c:28,f:0.3,s:0,k:130,fib:0,na:1,m:[]},
+  {id:'f_sticky_rice',name:"Sticky rice (khao niaw)",portion:"100 g",p:3.5,c:37,f:0.3,s:0,k:170,fib:0,na:1,m:[]},
+  {id:'f_brown_rice',name:"Brown rice",portion:"100 g",p:2.6,c:23,f:0.9,s:0,k:112,fib:0,na:1,m:[]},
+  {id:'f_rice_noodles',name:"Rice noodles (sen, cooked)",portion:"100 g",p:0.9,c:25,f:0.2,s:0,k:108,fib:0,na:5,m:[]},
+  {id:'f_egg_noodles',name:"Egg noodles (cooked)",portion:"100 g",p:4.5,c:25,f:1.5,s:0,k:138,fib:0,na:190,m:[]},
+  {id:'f_glass_mung_bean_noodles',name:"Glass/mung-bean noodles (cooked)",portion:"100 g",p:0.2,c:21,f:0,s:0,k:86,fib:0,na:3,m:[]},
+  {id:'f_rice_vermicelli',name:"Rice vermicelli (khao poon, cooked)",portion:"100 g",p:1.6,c:25,f:0.2,s:0,k:109,fib:0,na:5,m:[]},
+  {id:'f_baguette',name:"Baguette (Lao/French)",portion:"100 g",p:8,c:55,f:2,s:2,k:270,fib:0,na:520,m:[]},
+  {id:'f_white_bread',name:"White bread",portion:"1 slice ~30 g",p:2.5,c:15,f:1,s:1,k:80,fib:0,na:170,m:[]},
+  {id:'f_oats',name:"Oats (dry)",portion:"40 g",p:5,c:27,f:3,s:0,k:150,fib:0,na:2,m:[]},
+  {id:'f_pasta',name:"Pasta (cooked)",portion:"100 g",p:5,c:25,f:1,s:0,k:131,fib:0,na:1,m:[]},
+  {id:'f_potato',name:"Potato (boiled)",portion:"100 g",p:2,c:17,f:0.1,s:0,k:87,fib:0,na:5,m:["vitc", "potassium"],mAmt:{vitc:11,potassium:400}},
+  {id:'f_sweet_potato',name:"Sweet potato",portion:"100 g",p:1.6,c:20,f:0.1,s:0,k:86,fib:0,na:30,m:["vita"],mAmt:{vita:700}},
+  {id:'f_cassava',name:"Cassava (mun)",portion:"100 g",p:1.4,c:38,f:0.3,s:0,k:160,fib:0,na:14,m:[]},
+  {id:'f_taro',name:"Taro",portion:"100 g",p:1.5,c:26,f:0.1,s:0,k:112,fib:0,na:11,m:[]},
+  {id:'f_sweet_corn',name:"Sweet corn",portion:"100 g",p:3.3,c:19,f:1.5,s:0,k:96,fib:0,na:15,m:[]},
+  {id:'f_chicken_breast',name:"Chicken breast (skinless)",portion:"100 g",p:31,c:0,f:3.6,s:0,k:165,fib:0,na:70,m:["b12"],mAmt:{b12:0.3}},
+  {id:'f_chicken_thigh',name:"Chicken thigh (skinless)",portion:"100 g",p:26,c:0,f:10,s:0,k:209,fib:0,na:80,m:["b12"],mAmt:{b12:0.3}},
+  {id:'f_chicken',name:"Chicken (with skin)",portion:"100 g",p:27,c:0,f:15,s:0,k:240,fib:0,na:75,m:["b12"],mAmt:{b12:0.3}},
+  {id:'f_pork_loin',name:"Pork loin (lean)",portion:"100 g",p:27,c:0,f:8,s:0,k:190,fib:0,na:55,m:["b12", "zinc"],mAmt:{b12:0.7,zinc:1.9}},
+  {id:'f_pork_belly',name:"Pork belly",portion:"100 g",p:17,c:0,f:35,s:0,k:393,fib:0,na:55,m:["b12"],mAmt:{b12:0.6}},
+  {id:'f_minced_pork',name:"Minced pork",portion:"100 g",p:22,c:0,f:20,s:0,k:270,fib:0,na:60,m:["b12"],mAmt:{b12:0.7}},
+  {id:'f_beef',name:"Beef (lean)",portion:"100 g",p:26,c:0,f:11,s:0,k:210,fib:0,na:55,m:["iron", "b12", "zinc"],mAmt:{iron:2.6,b12:2.5,zinc:4.8}},
+  {id:'f_beef_2',name:"Beef (fatty/ribeye)",portion:"100 g",p:24,c:0,f:20,s:0,k:280,fib:0,na:55,m:["iron", "b12", "zinc"],mAmt:{iron:2.2,b12:1.9,zinc:4}},
+  {id:'f_duck',name:"Duck (with skin)",portion:"100 g",p:19,c:0,f:28,s:0,k:337,fib:0,na:65,m:["iron", "b12"],mAmt:{iron:2.7,b12:0.4}},
+  {id:'f_tilapia',name:"Tilapia",portion:"100 g",p:26,c:0,f:3,s:0,k:128,fib:0,na:50,m:["b12"],mAmt:{b12:1.6}},
+  {id:'f_catfish',name:"Catfish (pa)",portion:"100 g",p:18,c:0,f:8,s:0,k:150,fib:0,na:45,m:["omega3", "b12"],mAmt:{omega3:120,b12:1.2}},
+  {id:'f_snakehead_fish',name:"Snakehead fish (pa kho)",portion:"100 g",p:21,c:0,f:3,s:0,k:110,fib:0,na:50,m:["b12"],mAmt:{b12:1}},
+  {id:'f_mackerel',name:"Mackerel",portion:"100 g",p:19,c:0,f:14,s:0,k:205,fib:0,na:90,m:["omega3", "vitd", "b12"],mAmt:{omega3:2200,vitd:7,b12:8}},
+  {id:'f_salmon',name:"Salmon",portion:"100 g",p:22,c:0,f:13,s:0,k:208,fib:0,na:60,m:["omega3", "vitd", "b12"],mAmt:{omega3:2200,vitd:11,b12:3}},
+  {id:'f_canned_tuna',name:"Canned tuna (in water)",portion:"100 g",p:26,c:0,f:1,s:0,k:116,fib:0,na:300,m:["omega3", "b12"],mAmt:{omega3:250,b12:2.2}},
+  {id:'f_shrimp',name:"Shrimp",portion:"100 g",p:24,c:0,f:1,s:0,k:99,fib:0,na:120,m:["b12", "zinc"],mAmt:{b12:1.1,zinc:1.3}},
+  {id:'f_squid',name:"Squid",portion:"100 g",p:18,c:3,f:1.4,s:0,k:92,fib:0,na:45,m:["b12"],mAmt:{b12:1.3}},
+  {id:'f_egg',name:"Egg",portion:"1 large ~50 g",p:6,c:0.5,f:5,s:0,k:72,fib:0,na:70,m:["b12", "vitd"],mAmt:{b12:0.6,vitd:1.1}},
+  {id:'f_egg_white',name:"Egg white",portion:"1",p:3.6,c:0,f:0,s:0,k:17,fib:0,na:55,m:[]},
+  {id:'f_duck_egg',name:"Duck egg",portion:"1",p:9,c:1,f:10,s:0,k:130,fib:0,na:100,m:["b12", "vitd"],mAmt:{b12:3.2,vitd:2.6}},
+  {id:'f_firm_tofu',name:"Firm tofu",portion:"100 g",p:15,c:3,f:8,s:0,k:145,fib:0,na:10,m:["ca"],mAmt:{ca:150}},
+  {id:'f_tempeh',name:"Tempeh",portion:"100 g",p:19,c:9,f:11,s:0,k:192,fib:0,na:9,m:[]},
+  {id:'f_whole_milk',name:"Whole milk",portion:"250 ml",p:8,c:12,f:8,s:0,k:150,fib:0,na:105,m:["ca", "b12"],mAmt:{ca:280,b12:1.1}},
+  {id:'f_skim_milk',name:"Skim milk",portion:"250 ml",p:8,c:12,f:0.5,s:0,k:90,fib:0,na:130,m:["ca", "b12"],mAmt:{ca:300,b12:1.1}},
+  {id:'f_greek_yogurt',name:"Greek yogurt (plain)",portion:"170 g",p:17,c:6,f:5,s:0,k:130,fib:0,na:65,m:["ca", "b12"],mAmt:{ca:150,b12:1.1}},
+  {id:'f_plain_yogurt',name:"Plain yogurt",portion:"170 g",p:9,c:12,f:4,s:0,k:120,fib:0,na:80,m:["ca"],mAmt:{ca:230}},
+  {id:'f_cheddar_cheese',name:"Cheddar cheese",portion:"30 g",p:7,c:0.4,f:9,s:0,k:110,fib:0,na:180,m:["ca"],mAmt:{ca:200}},
+  {id:'f_butter',name:"Butter",portion:"1 tbsp",p:0,c:0,f:11,s:0,k:100,fib:0,na:90,m:[]},
+  {id:'f_lentils',name:"Lentils (cooked)",portion:"100 g",p:9,c:20,f:0.4,s:0,k:116,fib:0,na:2,m:["iron", "folate"],mAmt:{iron:3.3,folate:180}},
+  {id:'f_chickpeas',name:"Chickpeas (cooked)",portion:"100 g",p:9,c:27,f:2.6,s:0,k:164,fib:0,na:6,m:["iron"],mAmt:{iron:2.9}},
+  {id:'f_black_beans',name:"Black beans (cooked)",portion:"100 g",p:8,c:24,f:0.5,s:0,k:132,fib:0,na:2,m:["iron"],mAmt:{iron:2.1}},
+  {id:'f_edamame',name:"Edamame",portion:"100 g",p:11,c:10,f:5,s:0,k:122,fib:0,na:6,m:["folate"],mAmt:{folate:300}},
+  {id:'f_peanuts',name:"Peanuts",portion:"30 g",p:7,c:6,f:14,s:0,k:170,fib:0,na:70,m:["mg"],mAmt:{mg:50}},
+  {id:'f_almonds',name:"Almonds",portion:"30 g",p:6,c:6,f:14,s:0,k:170,fib:0,na:1,m:["mg"],mAmt:{mg:80}},
+  {id:'f_cashews',name:"Cashews",portion:"30 g",p:5,c:9,f:12,s:0,k:160,fib:0,na:90,m:["mg", "zinc"],mAmt:{mg:85,zinc:1.7}},
+  {id:'f_soy_milk',name:"Soy milk (unsweetened)",portion:"250 ml",p:7,c:4,f:4,s:0,k:80,fib:0,na:90,m:["ca"],mAmt:{ca:60}},
+  {id:'f_soy_milk_2',name:"Soy milk (sweetened)",portion:"250 ml",p:6,c:15,f:4,s:9,k:130,fib:0,na:90,m:[]},
+  {id:'f_vegetable_oil',name:"Vegetable oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:126,fib:0,na:0,m:[]},
+  {id:'f_olive_oil',name:"Olive oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:120,fib:0,na:0,m:[]},
+  {id:'f_sesame_oil',name:"Sesame oil",portion:"1 tbsp",p:0,c:0,f:14,s:0,k:120,fib:0,na:0,m:[]},
+  {id:'f_coconut_milk',name:"Coconut milk (canned)",portion:"100 ml",p:2,c:3,f:21,s:1,k:197,fib:0,na:15,m:[]},
+  {id:'f_coconut_cream',name:"Coconut cream",portion:"2 tbsp",p:1,c:2,f:10,s:1,k:100,fib:0,na:5,m:[]},
+  {id:'f_peanut_butter',name:"Peanut butter",portion:"1 tbsp",p:4,c:3,f:8,s:1,k:95,fib:0,na:75,m:[]},
+  {id:'f_mayonnaise',name:"Mayonnaise",portion:"1 tbsp",p:0,c:0,f:10,s:0,k:90,fib:0,na:90,m:[]},
+  {id:'f_morning_glory',name:"Morning glory (pak boong)",portion:"100 g",p:2.6,c:3,f:0.2,s:0,k:19,fib:0,na:100,m:["vita", "vitc", "iron", "vitk"],mAmt:{vita:190,vitc:55,iron:2.5,vitk:250}},
+  {id:'f_cabbage',name:"Cabbage",portion:"100 g",p:1.3,c:6,f:0.1,s:0,k:25,fib:0,na:18,m:["vitc"],mAmt:{vitc:36}},
+  {id:'f_chinese_broccoli',name:"Chinese broccoli (kai lan)",portion:"100 g",p:3,c:4,f:0.7,s:0,k:30,fib:0,na:25,m:["vita", "vitc", "vitk", "ca"],mAmt:{vita:250,vitc:45,vitk:400,ca:200}},
+  {id:'f_pak_choi_bok_choy',name:"Pak choi / bok choy",portion:"100 g",p:1.5,c:2,f:0.2,s:0,k:13,fib:0,na:65,m:["vita", "vitc"],mAmt:{vita:240,vitc:45}},
+  {id:'f_long_beans',name:"Long beans",portion:"100 g",p:3,c:8,f:0.4,s:0,k:47,fib:0,na:4,m:["folate"],mAmt:{folate:60}},
+  {id:'f_carrot',name:"Carrot",portion:"100 g",p:0.9,c:10,f:0.2,s:0,k:41,fib:0,na:69,m:["vita"],mAmt:{vita:830}},
+  {id:'f_tomato',name:"Tomato",portion:"100 g",p:0.9,c:4,f:0.2,s:0,k:18,fib:0,na:5,m:["vitc", "vita"],mAmt:{vitc:14,vita:42}},
+  {id:'f_cucumber',name:"Cucumber",portion:"100 g",p:0.7,c:4,f:0.1,s:0,k:16,fib:0,na:2,m:["vitc"],mAmt:{vitc:3}},
+  {id:'f_eggplant',name:"Eggplant",portion:"100 g",p:1,c:6,f:0.2,s:0,k:25,fib:0,na:2,m:[]},
+  {id:'f_pumpkin',name:"Pumpkin",portion:"100 g",p:1,c:7,f:0.1,s:0,k:26,fib:0,na:1,m:["vita"],mAmt:{vita:250}},
+  {id:'f_bamboo_shoots',name:"Bamboo shoots",portion:"100 g",p:2.6,c:5,f:0.3,s:0,k:27,fib:0,na:4,m:[]},
+  {id:'f_mushrooms',name:"Mushrooms",portion:"100 g",p:3,c:3,f:0.3,s:0,k:22,fib:0,na:5,m:[]},
+  {id:'f_lettuce',name:"Lettuce",portion:"100 g",p:1.4,c:3,f:0.2,s:0,k:15,fib:0,na:28,m:["vita", "vitk"],mAmt:{vita:150,vitk:80}},
+  {id:'f_bell_pepper',name:"Bell pepper",portion:"100 g",p:1,c:6,f:0.3,s:0,k:31,fib:0,na:4,m:["vitc", "vita"],mAmt:{vitc:100,vita:80}},
+  {id:'f_onion',name:"Onion",portion:"100 g",p:1.1,c:9,f:0.1,s:0,k:40,fib:0,na:4,m:[]},
+  {id:'f_leafy_greens',name:"Leafy greens (spinach-type)",portion:"100 g",p:2.9,c:3.6,f:0.4,s:0,k:23,fib:0,na:80,m:["iron", "vita", "vitk", "folate"],mAmt:{iron:2.7,vita:470,vitk:480,folate:190}},
+  {id:'f_okra',name:"Okra",portion:"100 g",p:1.9,c:7,f:0.2,s:0,k:33,fib:0,na:7,m:["vitc"],mAmt:{vitc:23}},
+  {id:'f_banana',name:"Banana",portion:"1 med ~120 g",p:1.3,c:27,f:0.4,s:0,k:105,fib:0,na:1,m:["potassium"],mAmt:{potassium:430}},
+  {id:'f_mango',name:"Mango",portion:"100 g",p:0.8,c:15,f:0.4,s:0,k:60,fib:0,na:1,m:["vitc", "vita"],mAmt:{vitc:36,vita:54}},
+  {id:'f_papaya',name:"Papaya",portion:"100 g",p:0.5,c:11,f:0.3,s:0,k:43,fib:0,na:8,m:["vitc", "vita"],mAmt:{vitc:61,vita:47}},
+  {id:'f_pineapple',name:"Pineapple",portion:"100 g",p:0.5,c:13,f:0.1,s:0,k:50,fib:0,na:1,m:["vitc"],mAmt:{vitc:48}},
+  {id:'f_watermelon',name:"Watermelon",portion:"100 g",p:0.6,c:8,f:0.2,s:0,k:30,fib:0,na:1,m:["vitc", "vita"],mAmt:{vitc:8,vita:28}},
+  {id:'f_cantaloupe',name:"Cantaloupe",portion:"100 g",p:0.8,c:8,f:0.2,s:0,k:34,fib:0,na:16,m:["vitc", "vita"],mAmt:{vitc:37,vita:170}},
+  {id:'f_dragon_fruit',name:"Dragon fruit",portion:"100 g",p:1.2,c:13,f:0,s:0,k:60,fib:0,na:0,m:["vitc"],mAmt:{vitc:9}},
+  {id:'f_guava',name:"Guava",portion:"100 g",p:2.6,c:14,f:1,s:0,k:68,fib:0,na:2,m:["vitc"],mAmt:{vitc:228}},
+  {id:'f_orange',name:"Orange",portion:"1 med",p:1,c:15,f:0.2,s:0,k:62,fib:0,na:0,m:["vitc", "folate"],mAmt:{vitc:70,folate:40}},
+  {id:'f_pomelo',name:"Pomelo",portion:"100 g",p:0.8,c:10,f:0,s:0,k:38,fib:0,na:1,m:["vitc"],mAmt:{vitc:61}},
+  {id:'f_apple',name:"Apple",portion:"1 med",p:0.5,c:25,f:0.3,s:0,k:95,fib:0,na:2,m:[]},
+  {id:'f_grapes',name:"Grapes",portion:"100 g",p:0.7,c:18,f:0.2,s:0,k:69,fib:0,na:2,m:["vitc"],mAmt:{vitc:4}},
+  {id:'f_longan',name:"Longan",portion:"100 g",p:1,c:15,f:0,s:0,k:60,fib:0,na:0,m:["vitc"],mAmt:{vitc:80}},
+  {id:'f_rambutan',name:"Rambutan",portion:"100 g",p:0.7,c:21,f:0.2,s:0,k:75,fib:0,na:11,m:["vitc"],mAmt:{vitc:50}},
+  {id:'f_coconut_flesh',name:"Coconut flesh",portion:"50 g",p:1.7,c:7,f:17,s:0,k:180,fib:0,na:10,m:[]},
+  {id:'f_fish_sauce',name:"Fish sauce",portion:"1 tbsp",p:1,c:1,f:0,s:0,k:10,fib:0,na:1400,m:[]},
+  {id:'f_soy_sauce',name:"Soy sauce",portion:"1 tbsp",p:1,c:1,f:0,s:0,k:10,fib:0,na:900,m:[]},
+  {id:'f_oyster_sauce',name:"Oyster sauce",portion:"1 tbsp",p:0.5,c:4,f:0,s:2,k:25,fib:0,na:490,m:[]},
+  {id:'f_padaek',name:"Padaek (fermented fish)",portion:"1 tbsp",p:2,c:1,f:0,s:0,k:15,fib:0,na:1000,m:[]},
+  {id:'f_sweet_chili_sauce',name:"Sweet chili sauce",portion:"1 tbsp",p:0,c:8,f:0,s:7,k:35,fib:0,na:100,m:[]},
+  {id:'f_sriracha',name:"Sriracha",portion:"1 tbsp",p:0,c:4,f:0,s:3,k:15,fib:0,na:230,m:[]},
+  {id:'f_ketchup',name:"Ketchup",portion:"1 tbsp",p:0,c:4,f:0,s:3,k:17,fib:0,na:150,m:[]},
+  {id:'f_sugar',name:"Sugar",portion:"1 tsp",p:0,c:4,f:0,s:4,k:16,fib:0,na:0,m:[]},
+  {id:'f_larb_moo',name:"Larb moo (pork larb)",portion:"~150 g",p:22,c:6,f:16,s:1,k:250,fib:0,na:750,m:["iron", "b12"],mAmt:{iron:1.5,b12:0.6}},
+  {id:'f_larb_gai',name:"Larb gai (chicken larb)",portion:"~150 g",p:25,c:5,f:10,s:1,k:210,fib:0,na:700,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_larb_pa',name:"Larb pa (fish larb)",portion:"~150 g",p:23,c:5,f:8,s:1,k:190,fib:0,na:700,m:["omega3", "b12"],mAmt:{omega3:400,b12:1.8}},
+  {id:'f_larb_neua',name:"Larb neua (beef larb)",portion:"~150 g",p:24,c:5,f:15,s:1,k:250,fib:0,na:750,m:["iron", "b12", "zinc"],mAmt:{iron:3,b12:2,zinc:4}},
+  {id:'f_nam_tok',name:"Nam tok (grilled beef salad)",portion:"~150 g",p:24,c:6,f:14,s:1,k:240,fib:0,na:700,m:["iron", "b12"],mAmt:{iron:2.6,b12:1.8}},
+  {id:'f_koi',name:"Koi (raw minced meat salad)",portion:"~150 g",p:22,c:5,f:14,s:1,k:230,fib:0,na:700,m:["iron"],mAmt:{iron:2.2}},
+  {id:'f_tam_mak_hoong',name:"Tam mak hoong (papaya salad)",portion:"~200 g",p:3,c:18,f:2,s:8,k:110,fib:0,na:850,m:["vitc", "vita"],mAmt:{vitc:35,vita:35}},
+  {id:'f_tam_maak_taeng',name:"Tam maak taeng (cucumber salad)",portion:"~150 g",p:2,c:8,f:1.5,s:4,k:60,fib:0,na:600,m:["vitc"],mAmt:{vitc:12}},
+  {id:'f_tam_khao_poon',name:"Tam khao poon (papaya + noodle)",portion:"~250 g",p:5,c:40,f:3,s:6,k:220,fib:0,na:700,m:["vitc"],mAmt:{vitc:30}},
+  {id:'f_nam_khao',name:"Nam khao (crispy rice salad)",portion:"~200 g",p:14,c:35,f:16,s:3,k:340,fib:0,na:650,m:[]},
+  {id:'f_ping_gai',name:"Ping gai (grilled chicken)",portion:"1/4 bird ~150 g",p:30,c:3,f:14,s:2,k:260,fib:0,na:450,m:["b12"],mAmt:{b12:0.4}},
+  {id:'f_ping_pa',name:"Ping pa (grilled fish)",portion:"~150 g",p:30,c:0,f:9,s:0,k:200,fib:0,na:400,m:["omega3", "vitd", "b12"],mAmt:{omega3:220,vitd:0.9,b12:2.2}},
+  {id:'f_ping_seen',name:"Ping seen (grilled beef skewer)",portion:"100 g",p:26,c:1,f:12,s:0,k:210,fib:0,na:380,m:["iron", "b12", "zinc"],mAmt:{iron:2.5,b12:2.3,zinc:4.5}},
+  {id:'f_mok_pa',name:"Mok pa (steamed fish, banana leaf)",portion:"1 parcel ~150 g",p:22,c:5,f:12,s:1,k:220,fib:0,na:500,m:["omega3", "vitd", "b12"],mAmt:{omega3:500,vitd:5,b12:2}},
+  {id:'f_sai_oua',name:"Sai oua (Lao herb sausage)",portion:"100 g",p:15,c:3,f:25,s:1,k:300,fib:0,na:650,m:["b12", "iron"],mAmt:{b12:0.6,iron:1.2}},
+  {id:'f_sien_savanh',name:"Sien savanh (Lao beef jerky)",portion:"50 g",p:20,c:6,f:14,s:4,k:230,fib:0,na:480,m:["iron", "b12"],mAmt:{iron:2,b12:1.5}},
+  {id:'f_khaep_moo',name:"Khaep moo (pork rinds)",portion:"30 g",p:17,c:0,f:13,s:0,k:190,fib:0,na:350,m:[]},
+  {id:'f_or_lam',name:"Or lam (Luang Prabang stew)",portion:"1 bowl ~300 g",p:18,c:12,f:16,s:2,k:280,fib:0,na:700,m:["vita"],mAmt:{vita:100}},
+  {id:'f_kaeng_no_mai',name:"Kaeng no mai (bamboo shoot soup)",portion:"1 bowl",p:8,c:10,f:6,s:1,k:130,fib:0,na:600,m:[]},
+  {id:'f_kaeng_som',name:"Kaeng som (sour soup)",portion:"1 bowl",p:12,c:10,f:4,s:2,k:130,fib:0,na:650,m:["vitc"],mAmt:{vitc:20}},
+  {id:'f_soup_gai',name:"Soup gai (chicken soup)",portion:"1 bowl",p:18,c:6,f:8,s:1,k:170,fib:0,na:600,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_tom',name:"Tom (clear meat + veg soup)",portion:"1 bowl",p:10,c:6,f:5,s:1,k:110,fib:0,na:550,m:[]},
+  {id:'f_khao_piak_sen',name:"Khao piak sen (rice noodle soup)",portion:"1 bowl ~400 g",p:20,c:45,f:8,s:1,k:330,fib:0,na:800,m:["b12"],mAmt:{b12:0.8}},
+  {id:'f_khao_piak_khao',name:"Khao piak khao (rice porridge)",portion:"1 bowl",p:10,c:35,f:5,s:1,k:220,fib:0,na:500,m:[]},
+  {id:'f_khao_poon',name:"Khao poon (vermicelli, red broth)",portion:"1 bowl",p:18,c:50,f:12,s:2,k:390,fib:0,na:750,m:["vita", "iron"],mAmt:{vita:80,iron:2.5}},
+  {id:'f_feu_pho',name:"Feu / pho (beef noodle soup)",portion:"1 bowl",p:22,c:48,f:9,s:3,k:360,fib:0,na:900,m:["iron", "b12"],mAmt:{iron:2.8,b12:1.5}},
+  {id:'f_khua_mee',name:"Khua mee (Lao fried noodles)",portion:"1 plate ~300 g",p:14,c:55,f:18,s:4,k:430,fib:0,na:750,m:[]},
+  {id:'f_kai_pam_kai_jeow',name:"Kai pam / kai jeow (Lao omelet)",portion:"2 eggs + oil",p:13,c:2,f:16,s:0,k:210,fib:0,na:420,m:["b12", "vitd"],mAmt:{b12:1.1,vitd:2}},
+  {id:'f_khua_khai',name:"Khua khai (egg + veg stir-fry)",portion:"1 serving",p:12,c:6,f:14,s:2,k:200,fib:0,na:500,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_pak_boong_fai_daeng',name:"Pak boong fai daeng (morning glory)",portion:"1 cup ~150 g",p:3,c:7,f:8,s:2,k:100,fib:0,na:450,m:["vita", "vitc", "iron", "vitk"],mAmt:{vita:200,vitc:40,iron:2.5,vitk:300}},
+  {id:'f_jeow_bong',name:"Jeow bong (sweet chili paste)",portion:"2 tbsp",p:1,c:6,f:4,s:5,k:70,fib:0,na:450,m:["vita"],mAmt:{vita:30}},
+  {id:'f_jeow_mak_len',name:"Jeow mak len (tomato dip)",portion:"2 tbsp",p:1,c:3,f:1,s:1,k:25,fib:0,na:400,m:["vitc", "vita"],mAmt:{vitc:8,vita:25}},
+  {id:'f_jeow_mak_keua',name:"Jeow mak keua (eggplant dip)",portion:"2 tbsp",p:1,c:3,f:2,s:1,k:30,fib:0,na:400,m:[]},
+  {id:'f_khao_niaw_mak_muang',name:"Khao niaw mak muang (mango sticky rice)",portion:"~200 g",p:5,c:65,f:10,s:25,k:380,fib:0,na:190,m:["vitc", "vita"],mAmt:{vitc:25,vita:50}},
+  {id:'f_nam_van',name:"Nam van (sweet coconut dessert)",portion:"1 cup",p:3,c:40,f:12,s:25,k:290,fib:0,na:60,m:[]},
+  {id:'f_kai_pen',name:"Kai pen (fried river weed)",portion:"30 g",p:5,c:8,f:10,s:0,k:130,fib:0,na:300,m:["iron"],mAmt:{iron:2}},
+  {id:'f_khanom',name:"Khanom (coconut rice cake)",portion:"1 piece",p:2,c:20,f:5,s:8,k:140,fib:0,na:60,m:[]},
+  {id:'f_pad_kaphrao_gai_rice',name:"Pad kaphrao gai + rice (basil chicken rice)",portion:"1 plate",p:28,c:55,f:18,s:4,k:500,fib:0,na:1000,m:["b12"],mAmt:{b12:0.6}},
+  {id:'f_pad_thai',name:"Pad thai",portion:"1 plate",p:18,c:60,f:14,s:10,k:450,fib:0,na:1000,m:[]},
+  {id:'f_pad_see_ew',name:"Pad see ew",portion:"1 plate",p:16,c:58,f:16,s:6,k:460,fib:0,na:1050,m:[]},
+  {id:'f_khao_pad',name:"Khao pad (fried rice)",portion:"1 plate",p:16,c:60,f:16,s:4,k:460,fib:0,na:900,m:[]},
+  {id:'f_khao_man_gai',name:"Khao man gai (chicken rice)",portion:"1 plate",p:30,c:60,f:16,s:3,k:500,fib:0,na:850,m:["b12"],mAmt:{b12:0.7}},
+  {id:'f_khao_soi',name:"Khao soi",portion:"1 bowl",p:22,c:55,f:28,s:6,k:560,fib:0,na:950,m:[]},
+  {id:'f_green_curry_chicken',name:"Green curry chicken (no rice)",portion:"1 bowl",p:20,c:10,f:22,s:4,k:320,fib:0,na:700,m:["vita"],mAmt:{vita:80}},
+  {id:'f_red_curry',name:"Red curry (no rice)",portion:"1 bowl",p:20,c:10,f:22,s:4,k:320,fib:0,na:700,m:[]},
+  {id:'f_massaman_curry',name:"Massaman curry",portion:"1 bowl",p:22,c:15,f:24,s:6,k:380,fib:0,na:750,m:[]},
+  {id:'f_tom_yum_goong',name:"Tom yum goong",portion:"1 bowl",p:18,c:8,f:8,s:2,k:170,fib:0,na:900,m:["vitc"],mAmt:{vitc:20}},
+  {id:'f_tom_kha_gai',name:"Tom kha gai",portion:"1 bowl",p:16,c:10,f:18,s:3,k:260,fib:0,na:750,m:[]},
+  {id:'f_som_tam',name:"Som tam (Thai papaya salad)",portion:"1 plate",p:4,c:20,f:3,s:10,k:130,fib:0,na:900,m:["vitc", "vita"],mAmt:{vitc:35,vita:35}},
+  {id:'f_moo_ping',name:"Moo ping (grilled pork skewers)",portion:"2 sticks",p:16,c:6,f:14,s:6,k:220,fib:0,na:400,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_satay_chicken_peanut_sauce',name:"Satay chicken + peanut sauce",portion:"4 sticks",p:24,c:10,f:16,s:8,k:290,fib:0,na:500,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_thai_iced_tea',name:"Thai iced tea",portion:"1 glass",p:2,c:40,f:6,s:35,k:260,fib:0,na:30,m:[]},
+  {id:'f_pho_bo',name:"Pho bo (beef)",portion:"1 bowl",p:25,c:50,f:8,s:3,k:380,fib:0,na:1000,m:["iron", "b12"],mAmt:{iron:2.8,b12:1.5}},
+  {id:'f_pho_ga',name:"Pho ga (chicken)",portion:"1 bowl",p:24,c:48,f:6,s:3,k:350,fib:0,na:950,m:["b12"],mAmt:{b12:0.8}},
+  {id:'f_banh_mi',name:"Banh mi",portion:"1 sandwich",p:18,c:50,f:16,s:6,k:420,fib:0,na:800,m:[]},
+  {id:'f_goi_cuon',name:"Goi cuon (fresh spring rolls)",portion:"2 rolls",p:10,c:30,f:3,s:4,k:200,fib:0,na:400,m:[]},
+  {id:'f_cha_gio_nem',name:"Cha gio / nem (fried spring rolls)",portion:"3 rolls",p:8,c:25,f:14,s:3,k:260,fib:0,na:450,m:[]},
+  {id:'f_com_tam',name:"Com tam (broken rice + grilled pork)",portion:"1 plate",p:28,c:65,f:18,s:6,k:540,fib:0,na:850,m:["b12"],mAmt:{b12:0.7}},
+  {id:'f_bun_thit_nuong',name:"Bun thit nuong (vermicelli + pork)",portion:"1 bowl",p:24,c:55,f:16,s:8,k:460,fib:0,na:750,m:["b12"],mAmt:{b12:0.6}},
+  {id:'f_bun_bo_hue',name:"Bun bo hue",portion:"1 bowl",p:24,c:50,f:14,s:3,k:420,fib:0,na:950,m:["iron", "b12"],mAmt:{iron:2.5,b12:1.4}},
+  {id:'f_vietnamese_iced_coffee',name:"Vietnamese iced coffee (ca phe sua da)",portion:"1 glass",p:2,c:25,f:5,s:22,k:160,fib:0,na:30,m:[]},
+  {id:'f_egg_fried_rice',name:"Egg fried rice",portion:"1 plate",p:12,c:60,f:16,s:2,k:440,fib:0,na:700,m:[]},
+  {id:'f_chow_mein',name:"Chow mein",portion:"1 plate",p:16,c:55,f:18,s:6,k:460,fib:0,na:950,m:[]},
+  {id:'f_sweet_and_sour_pork',name:"Sweet & sour pork",portion:"1 serving",p:20,c:40,f:22,s:20,k:440,fib:0,na:650,m:[]},
+  {id:'f_kung_pao_chicken',name:"Kung pao chicken",portion:"1 serving",p:26,c:18,f:22,s:10,k:380,fib:0,na:900,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_mapo_tofu',name:"Mapo tofu",portion:"1 serving",p:16,c:12,f:18,s:3,k:280,fib:0,na:850,m:[]},
+  {id:'f_char_siu_pork',name:"Char siu pork",portion:"100 g",p:20,c:12,f:14,s:10,k:250,fib:0,na:650,m:["b12"],mAmt:{b12:0.6}},
+  {id:'f_steamed_dumplings',name:"Steamed dumplings",portion:"6 pcs",p:12,c:30,f:8,s:2,k:240,fib:0,na:550,m:[]},
+  {id:'f_wonton_soup',name:"Wonton soup",portion:"6 wontons",p:14,c:25,f:8,s:2,k:220,fib:0,na:900,m:[]},
+  {id:'f_steamed_bao',name:"Steamed bao (pork bun)",portion:"1",p:7,c:30,f:6,s:8,k:200,fib:0,na:350,m:[]},
+  {id:'f_stir_fried_greens_w_garlic',name:"Stir-fried greens w/ garlic",portion:"1 plate",p:4,c:8,f:10,s:2,k:130,fib:0,na:400,m:["vita", "vitc", "vitk"],mAmt:{vita:250,vitc:30,vitk:250}},
+  {id:'f_congee',name:"Congee (plain)",portion:"1 bowl",p:4,c:30,f:1,s:0,k:140,fib:0,na:350,m:[]},
+  {id:'f_sushi',name:"Sushi (raw fish)",portion:"6 pcs",p:16,c:55,f:6,s:6,k:330,fib:0,na:400,m:["omega3"],mAmt:{omega3:600}},
+  {id:'f_sushi_roll',name:"Sushi roll (cooked / California)",portion:"6 pcs",p:10,c:45,f:8,s:8,k:300,fib:0,na:450,m:[]},
+  {id:'f_ramen',name:"Ramen",portion:"1 bowl",p:24,c:60,f:20,s:4,k:540,fib:0,na:1800,m:["b12"],mAmt:{b12:1}},
+  {id:'f_chicken_katsu',name:"Chicken katsu",portion:"1 serving",p:28,c:25,f:22,s:3,k:420,fib:0,na:650,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_chicken_teriyaki',name:"Chicken teriyaki",portion:"1 serving",p:28,c:18,f:14,s:12,k:320,fib:0,na:750,m:["b12"],mAmt:{b12:0.6}},
+  {id:'f_gyoza',name:"Gyoza",portion:"6 pcs",p:10,c:24,f:10,s:2,k:220,fib:0,na:550,m:[]},
+  {id:'f_miso_soup',name:"Miso soup",portion:"1 bowl",p:4,c:6,f:2,s:1,k:60,fib:0,na:900,m:[]},
+  {id:'f_bibimbap',name:"Bibimbap",portion:"1 bowl",p:22,c:70,f:16,s:6,k:560,fib:0,na:900,m:["iron", "vita"],mAmt:{iron:2.5,vita:300}},
+  {id:'f_korean_fried_chicken',name:"Korean fried chicken",portion:"5 pcs",p:26,c:30,f:28,s:12,k:500,fib:0,na:950,m:[]},
+  {id:'f_tteokbokki',name:"Tteokbokki",portion:"1 serving",p:8,c:70,f:8,s:16,k:400,fib:0,na:950,m:[]},
+  {id:'f_kimchi',name:"Kimchi",portion:"50 g",p:1,c:3,f:0,s:2,k:15,fib:0,na:350,m:["vitc"],mAmt:{vitc:7}},
+  {id:'f_scrambled_eggs',name:"Scrambled eggs (butter)",portion:"2 eggs",p:13,c:1,f:16,s:0,k:210,fib:0,na:190,m:["b12", "vitd"],mAmt:{b12:1.1,vitd:2}},
+  {id:'f_bacon',name:"Bacon",portion:"2 strips",p:6,c:0,f:7,s:0,k:90,fib:0,na:300,m:[]},
+  {id:'f_toast_butter',name:"Toast + butter",portion:"1 slice",p:3,c:15,f:5,s:1,k:120,fib:0,na:170,m:[]},
+  {id:'f_pancakes_syrup',name:"Pancakes + syrup",portion:"2",p:8,c:50,f:10,s:20,k:350,fib:0,na:450,m:[]},
+  {id:'f_croissant',name:"Croissant",portion:"1",p:5,c:26,f:14,s:6,k:260,fib:0,na:260,m:[]},
+  {id:'f_granola_milk',name:"Granola + milk",portion:"1 bowl",p:10,c:50,f:12,s:18,k:350,fib:0,na:150,m:[]},
+  {id:'f_cereal_milk',name:"Cereal + milk",portion:"1 bowl",p:9,c:45,f:6,s:15,k:280,fib:0,na:250,m:[]},
+  {id:'f_grilled_chicken_breast',name:"Grilled chicken breast",portion:"150 g",p:46,c:0,f:5,s:0,k:240,fib:0,na:110,m:["b12"],mAmt:{b12:0.45}},
+  {id:'f_beef_steak',name:"Beef steak",portion:"150 g",p:39,c:0,f:17,s:0,k:320,fib:0,na:90,m:["iron", "b12", "zinc"],mAmt:{iron:3.5,b12:2.8,zinc:5.5}},
+  {id:'f_baked_salmon',name:"Baked salmon",portion:"150 g",p:33,c:0,f:20,s:0,k:310,fib:0,na:80,m:["omega3", "vitd", "b12"],mAmt:{omega3:3000,vitd:15,b12:4.5}},
+  {id:'f_cheeseburger',name:"Cheeseburger",portion:"1",p:25,c:35,f:28,s:8,k:500,fib:0,na:950,m:["iron", "b12"],mAmt:{iron:2,b12:1.5}},
+  {id:'f_pizza',name:"Pizza",portion:"2 slices",p:20,c:60,f:22,s:6,k:520,fib:0,na:1100,m:["ca"],mAmt:{ca:250}},
+  {id:'f_spaghetti_bolognese',name:"Spaghetti bolognese",portion:"1 plate",p:24,c:60,f:18,s:6,k:500,fib:0,na:800,m:["iron", "b12"],mAmt:{iron:2.5,b12:1.5}},
+  {id:'f_spaghetti_carbonara',name:"Spaghetti carbonara",portion:"1 plate",p:22,c:60,f:26,s:4,k:580,fib:0,na:850,m:[]},
+  {id:'f_ham_and_cheese_sandwich',name:"Ham & cheese sandwich",portion:"1",p:20,c:40,f:16,s:5,k:380,fib:0,na:950,m:["ca"],mAmt:{ca:200}},
+  {id:'f_caesar_salad_w_chicken',name:"Caesar salad w/ chicken",portion:"1",p:30,c:12,f:26,s:3,k:400,fib:0,na:850,m:["b12"],mAmt:{b12:0.4}},
+  {id:'f_french_fries',name:"French fries",portion:"medium",p:4,c:48,f:17,s:0,k:360,fib:0,na:300,m:[]},
+  {id:'f_roast_vegetables',name:"Roast vegetables",portion:"1 cup",p:3,c:20,f:7,s:5,k:150,fib:0,na:200,m:["vita", "vitc"],mAmt:{vita:300,vitc:25}},
+  {id:'f_fried_chicken',name:"Fried chicken",portion:"2 pcs",p:30,c:16,f:28,s:0,k:430,fib:0,na:700,m:["b12"],mAmt:{b12:0.5}},
+  {id:'f_hot_dog',name:"Hot dog",portion:"1",p:10,c:25,f:17,s:5,k:290,fib:0,na:700,m:[]},
+  {id:'f_protein_bar',name:"Protein bar",portion:"1",p:20,c:25,f:8,s:10,k:240,fib:0,na:200,m:[]},
+  {id:'f_mixed_nuts_snack',name:"Mixed nuts snack",portion:"30 g",p:5,c:6,f:15,s:0,k:180,fib:0,na:90,m:["mg"],mAmt:{mg:70}},
+  {id:'f_hummus',name:"Hummus",portion:"2 tbsp",p:2,c:6,f:5,s:0,k:80,fib:0,na:120,m:[]},
+  {id:'f_crackers',name:"Crackers",portion:"30 g",p:3,c:22,f:4,s:2,k:130,fib:0,na:220,m:[]},
+  {id:'f_seaweed_snack',name:"Seaweed snack",portion:"5 g",p:1,c:1,f:1,s:0,k:15,fib:0,na:90,m:["iodine"],mAmt:{iodine:75}},
+  {id:'f_dark_chocolate',name:"Dark chocolate",portion:"30 g",p:2,c:13,f:11,s:10,k:170,fib:0,na:3,m:["mg"],mAmt:{mg:65}},
+  {id:'f_ice_cream',name:"Ice cream",portion:"1 scoop",p:3,c:20,f:9,s:18,k:170,fib:0,na:40,m:[]},
+  {id:'f_chocolate_cake',name:"Chocolate cake",portion:"1 slice",p:4,c:50,f:18,s:35,k:400,fib:0,na:250,m:[]},
+  {id:'f_cookies',name:"Cookies",portion:"2",p:2,c:20,f:7,s:10,k:150,fib:0,na:90,m:[]},
+  {id:'f_potato_chips',name:"Potato chips",portion:"30 g",p:2,c:15,f:10,s:0,k:160,fib:0,na:170,m:[]},
+  {id:'f_banana_chips',name:"Banana chips",portion:"30 g",p:0.5,c:18,f:10,s:6,k:160,fib:0,na:3,m:[]},
+  {id:'f_sundried_lao_banana',name:"Sundried Lao banana",portion:"3 small ~45 g",p:1.5,c:36,f:0.5,s:18,k:150,fib:0,na:5,m:["potassium"],mAmt:{potassium:280}},
+  {id:'f_water',name:"Water",portion:"any",p:0,c:0,f:0,s:0,k:0,fib:0,na:0,m:[]},
+  {id:'f_black_coffee',name:"Black coffee (no sugar)",portion:"1 cup",p:0,c:0,f:0,s:0,k:5,fib:0,na:5,m:[]},
+  {id:'f_americano',name:"Americano",portion:"1",p:0,c:0,f:0,s:0,k:10,fib:0,na:5,m:[]},
+  {id:'f_latte',name:"Latte (regular milk)",portion:"1 med",p:8,c:12,f:8,s:0,k:150,fib:0,na:105,m:["ca"],mAmt:{ca:150}},
+  {id:'f_cappuccino',name:"Cappuccino",portion:"1",p:6,c:9,f:6,s:0,k:110,fib:0,na:80,m:["ca"],mAmt:{ca:80}},
+  {id:'f_lao_coffee_sweetened',name:"Lao coffee, sweetened (oliang)",portion:"1 glass",p:2,c:30,f:6,s:28,k:180,fib:0,na:20,m:[]},
+  {id:'f_orange_juice',name:"Orange juice",portion:"250 ml",p:2,c:26,f:0,s:0,k:112,fib:0,na:5,m:["vitc"],mAmt:{vitc:110}},
+  {id:'f_fruit_smoothie',name:"Fruit smoothie (banana/mango)",portion:"1 med",p:3,c:45,f:2,s:15,k:250,fib:0,na:30,m:["vitc"],mAmt:{vitc:35}},
+  {id:'f_coconut_water',name:"Coconut water",portion:"1 cup",p:1,c:9,f:0,s:6,k:45,fib:0,na:250,m:["potassium"],mAmt:{potassium:600}},
+  {id:'f_bubble_tea',name:"Bubble tea",portion:"1 med",p:3,c:60,f:6,s:45,k:350,fib:0,na:90,m:[]},
+  {id:'f_cola_soft_drink',name:"Cola / soft drink",portion:"330 ml",p:0,c:39,f:0,s:39,k:140,fib:0,na:30,m:[]},
+  {id:'f_sports_drink',name:"Sports drink",portion:"500 ml",p:0,c:30,f:0,s:28,k:130,fib:0,na:220,m:[]},
+  {id:'f_beer',name:"Beer",portion:"330 ml",p:2,c:12,f:0,s:0,k:150,fib:0,na:10,m:[]},
+  {id:'f_fitwhey_baam_iso_whey_isolate',name:"Fitwhey BAAM ISO whey isolate",portion:"1 scoop",p:30,c:0,f:1,s:0,k:130,fib:0,na:null,m:[]},
+  {id:'f_baam_intra_juice',name:"BAAM Intra Juice (BCAA/electrolyte)",portion:"1 serving",p:1,c:5,f:0,s:2,k:25,fib:0,na:null,m:[]},
+  {id:'f_tofusan_sesame_soy_protein_drink',name:"Tofusan sesame soy protein drink",portion:"1 bottle",p:8,c:18,f:4,s:9,k:140,fib:0,na:null,m:[]},
+  {id:'f_kaeng_bon',name:"Kaeng bon (taro stem curry, pork)",portion:"100 g",p:6,c:8,f:6,s:1,k:110,fib:2,na:450,m:[]},
+  {id:'f_nor_mai_dong',name:"Nor mai dong (fermented bamboo shoot salad)",portion:"100 g",p:2,c:6,f:2,s:1,k:45,fib:2,na:500,m:[]},
+  {id:'f_jaew_som',name:"Jaew som (sour tamarind dip)",portion:"100 g",p:1,c:8,f:1,s:3,k:40,fib:1,na:600,m:[]},
+  {id:'f_look_chin_ping',name:"Look chin ping (grilled Lao meatballs)",portion:"100 g",p:16,c:8,f:10,s:2,k:180,fib:0,na:450,m:[]},
+  {id:'f_mok_pa_fak',name:"Mok pa fak (fish + pumpkin, steamed)",portion:"100 g",p:14,c:6,f:6,s:1,k:130,fib:1,na:350,m:[]},
+  {id:'f_kaeng_no_mai_som',name:"Kaeng no mai som (sour bamboo shoot soup)",portion:"100 g",p:5,c:6,f:2,s:1,k:65,fib:2,na:400,m:[]},
+  {id:'f_nam_prik_pa_daek',name:"Nam prik pa daek (padaek chili dip)",portion:"100 g",p:3,c:4,f:1,s:0,k:35,fib:0,na:900,m:[]},
+  {id:'f_khao_poon_nam_kathi',name:"Khao poon nam kathi (coconut-broth vermicelli)",portion:"100 g",p:14,c:35,f:14,s:2,k:320,fib:1,na:500,m:[]},
+  {id:'f_tam_bak_hoong_sai_boo',name:"Tam bak hoong sai boo (papaya salad w/ crab)",portion:"100 g",p:6,c:16,f:1,s:6,k:95,fib:2,na:550,m:[]},
+  {id:'f_ping_kai_noi',name:"Ping kai noi (grilled quail)",portion:"100 g",p:20,c:0,f:12,s:0,k:190,fib:0,na:200,m:[]},
+  {id:'f_kaeng_phak_kaad',name:"Kaeng phak kaad (mustard green soup, pork)",portion:"100 g",p:6,c:5,f:4,s:1,k:80,fib:1,na:400,m:[]},
+  {id:'f_panang_curry',name:"Panang curry",portion:"100 g",p:18,c:8,f:20,s:4,k:280,fib:1,na:550,m:[]},
+  {id:'f_yam_neua',name:"Yam neua (Thai beef salad)",portion:"100 g",p:20,c:6,f:8,s:2,k:180,fib:1,na:600,m:[]},
+  {id:'f_pla_pao',name:"Pla pao (salt-crusted grilled fish)",portion:"100 g",p:22,c:0,f:6,s:0,k:150,fib:0,na:500,m:[]},
+  {id:'f_pla_tod',name:"Pla tod (fried whole fish)",portion:"100 g",p:20,c:2,f:14,s:0,k:220,fib:0,na:300,m:[]},
+  {id:'f_kai_jeow_moo_sap',name:"Kai jeow moo sap (Thai omelette, minced pork)",portion:"100 g",p:14,c:2,f:16,s:0,k:210,fib:0,na:400,m:[]},
+  {id:'f_khao_kha_moo',name:"Khao kha moo (stewed pork leg rice)",portion:"100 g",p:16,c:30,f:14,s:3,k:320,fib:0.5,na:650,m:[]},
+  {id:'f_khao_mok_gai',name:"Khao mok gai (Thai chicken biryani)",portion:"100 g",p:16,c:35,f:10,s:2,k:290,fib:1,na:500,m:[]},
+  {id:'f_guay_teow_reua',name:"Guay teow reua (boat noodles)",portion:"100 g",p:14,c:30,f:6,s:2,k:220,fib:0.5,na:550,m:[]},
+  {id:'f_pad_prik_king',name:"Pad prik king (dry red curry stir-fry)",portion:"100 g",p:16,c:8,f:14,s:2,k:220,fib:1,na:500,m:[]},
+  {id:'f_gaeng_hang_lay',name:"Gaeng hang lay (northern Thai pork curry)",portion:"100 g",p:14,c:8,f:16,s:2,k:230,fib:1,na:450,m:[]},
+  {id:'f_nam_prik_noom',name:"Nam prik noom (green chili dip)",portion:"100 g",p:2,c:8,f:2,s:1,k:55,fib:2,na:500,m:[]},
+  {id:'f_tod_mun_pla',name:"Tod mun pla (Thai fish cakes)",portion:"100 g",p:14,c:10,f:8,s:2,k:160,fib:0.5,na:500,m:[]},
+  {id:'f_yam_talay',name:"Yam talay (spicy mixed seafood salad)",portion:"100 g",p:16,c:8,f:4,s:3,k:130,fib:1,na:600,m:[]},
+  {id:'f_pla_goong',name:"Pla goong (spicy shrimp salad)",portion:"100 g",p:18,c:6,f:2,s:3,k:120,fib:1,na:650,m:[]},
+  {id:'f_kai_med_mamuang',name:"Kai med mamuang (cashew chicken)",portion:"100 g",p:18,c:12,f:14,s:5,k:250,fib:1,na:550,m:[]},
+  {id:'f_pad_prik_thai_dam',name:"Pad prik Thai dam (black pepper stir-fry)",portion:"100 g",p:18,c:6,f:12,s:2,k:210,fib:1,na:500,m:[]},
+  {id:'f_tom_yum_pla',name:"Tom yum pla (fish tom yum)",portion:"100 g",p:14,c:5,f:3,s:1,k:100,fib:0.5,na:550,m:[]},
+  {id:'f_hor_mok',name:"Hor mok (steamed fish curry mousse)",portion:"100 g",p:14,c:6,f:12,s:2,k:180,fib:0.5,na:450,m:[]},
+  {id:'f_kai_palo',name:"Kai palo (five-spice stewed egg)",portion:"100 g",p:10,c:5,f:8,s:3,k:140,fib:0,na:600,m:[]},
+  {id:'f_khao_klook_kapi',name:"Khao klook kapi (shrimp paste fried rice)",portion:"100 g",p:10,c:45,f:10,s:2,k:310,fib:1,na:700,m:[]},
+  {id:'f_khanom_krok',name:"Khanom krok (coconut rice pancakes)",portion:"100 g",p:3,c:25,f:8,s:10,k:190,fib:0.5,na:120,m:[]},
+  {id:'f_roti_thai',name:"Roti (Thai, plain/sweetened)",portion:"100 g",p:5,c:35,f:12,s:8,k:280,fib:0.5,na:250,m:[]},
+  {id:'f_kluay_tod',name:"Kluay tod (fried banana)",portion:"100 g",p:2,c:30,f:8,s:8,k:220,fib:1,na:60,m:[]},
+  {id:'f_tub_tim_krob',name:"Tub tim krob (water chestnut coconut dessert)",portion:"100 g",p:1,c:25,f:6,s:15,k:170,fib:0.5,na:20,m:[]},
+  {id:'f_kaeng_liang',name:"Kaeng liang (spicy vegetable soup)",portion:"100 g",p:6,c:6,f:2,s:1,k:70,fib:2,na:450,m:[]},
+  {id:'f_pla_rad_prik',name:"Pla rad prik (fried fish with chili sauce)",portion:"100 g",p:18,c:10,f:12,s:5,k:220,fib:0.5,na:600,m:[]},
+  {id:'f_moo_manao',name:"Moo manao (pork with lime and chili)",portion:"100 g",p:20,c:5,f:6,s:2,k:160,fib:0.5,na:550,m:[]},
+  {id:'f_pad_kra_pow_moo',name:"Pad kra pow moo (basil pork, no rice)",portion:"100 g",p:20,c:6,f:16,s:2,k:260,fib:0.5,na:600,m:[]},
+  {id:'f_yum_makheua_yao',name:"Yum makheua yao (grilled eggplant salad)",portion:"100 g",p:2,c:6,f:2,s:2,k:55,fib:2,na:400,m:[]},
+  {id:'f_tom_jued_moo_sap',name:"Tom jued moo sap (clear soup, pork meatballs)",portion:"100 g",p:8,c:3,f:4,s:0,k:90,fib:0.5,na:400,m:[]},
+  {id:'f_pad_kana_moo_grob',name:"Pad kana moo grob (Chinese broccoli, crispy pork)",portion:"100 g",p:12,c:6,f:14,s:2,k:190,fib:1,na:550,m:[]},
+  {id:'f_moo_krob',name:"Moo krob (crispy pork belly)",portion:"100 g",p:18,c:0,f:30,s:0,k:340,fib:0,na:400,m:[]},
+  {id:'f_kaeng_pa',name:"Kaeng pa (jungle curry, no coconut)",portion:"100 g",p:16,c:6,f:6,s:2,k:150,fib:1,na:550,m:[]},
+  {id:'f_pla_nueng_manao',name:"Pla nueng manao (steamed fish with lime)",portion:"100 g",p:20,c:4,f:3,s:2,k:130,fib:0.5,na:500,m:[]},
+  {id:'f_kung_ob_woonsen',name:"Kung ob woonsen (shrimp glass noodle casserole)",portion:"100 g",p:14,c:20,f:4,s:2,k:170,fib:0.5,na:500,m:[]},
+  {id:'f_kai_tom_kem',name:"Kai tom kem (soy-braised eggs)",portion:"100 g",p:10,c:4,f:8,s:4,k:130,fib:0,na:500,m:[]},
+  {id:'f_pad_pak_ruam_mit',name:"Pad pak ruam mit (mixed vegetable stir-fry)",portion:"100 g",p:3,c:8,f:6,s:1,k:110,fib:2,na:420,m:[]}
 ];
 const EX_TYPES=['Core / Session B','Legs / Session A','Upper body','Stair cardio','10 km walk','Swim','Other'];
+const SODIUM_TARGET_MG=2300;
 
 /* ---------- row <-> app shape mapping ---------- */
 function mapProfileRow(r){return {id:r.id,name:r.name,t:{p:+r.protein_target||0,c:+r.carbs_target||0,f:+r.fat_target||0,s:+r.sugar_target||0,k:+r.kcal_target||0},age:r.age==null?'':r.age,note:r.note||''};}
 function profileToRow(p){return {id:p.id,name:p.name,protein_target:p.t.p,carbs_target:p.t.c,fat_target:p.t.f,sugar_target:p.t.s,kcal_target:p.t.k,age:(p.age===''||p.age==null)?null:p.age,note:p.note||''};}
-function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
+function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,na:r.sodium==null?null:+r.sodium,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};}
 function mapFoodLogRow(r){return {id:r.id,foodId:r.food_id,name:r.name,multLabel:r.mult_label,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function mapExerciseLogRow(r){return {id:r.id,type:r.type,min:r.minutes,note:r.note||''};}
@@ -770,7 +826,7 @@ function mapBodyRow(r){return {date:r.log_date,weight:r.weight,waist:r.waist};}
 
 /* ---------- state ---------- */
 let profiles=[],foods=[],active=null;
-let curFood=null,curMult=1,curExType=EX_TYPES[0],nfMicroSel=[],nfMicroAmt={},editingFoodId=null,exportRange='day';
+let curFood=null,curMult=1,curExType=EX_TYPES[0],nfMicroSel=[],nfMicroAmt={},editingFoodId=null,editingLogId=null,exportRange='day';
 const pad2=n=>n<10?'0'+n:''+n;
 const dstr=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 const today=dstr(new Date());
@@ -792,7 +848,12 @@ async function loadFoods(){
     await sbWrite(sb.from('foods').insert(SEED_FOODS.map(foodToRow)));
     rows=await sbRead(sb.from('foods').select('*').order('id'));
   }
-  return rows.map(mapFoodRow);
+  const naById={};SEED_FOODS.forEach(sf=>{naById[sf.id]=sf.na;});
+  return rows.map(r=>{
+    const f=mapFoodRow(r);
+    if(f.na==null&&naById[r.id]!=null)f.na=naById[r.id];
+    return f;
+  });
 }
 async function loadDay(){
   const [logs,ex,body]=await Promise.all([
@@ -854,6 +915,24 @@ async function chooseDevice(id){
 function prof(){return profiles.find(p=>p.id===active)||profiles[0];}
 function sum(arr){return arr.reduce((a,e)=>({p:a.p+e.p,c:a.c+e.c,f:a.f+e.f,s:a.s+e.s,k:a.k+e.k,fib:a.fib+(e.fib||0)}),{p:0,c:0,f:0,s:0,k:0,fib:0});}
 const r1=n=>Math.round(n*10)/10, r0=n=>Math.round(n);
+function estimateLogMult(f,e){
+  if(f.p)return e.p/f.p;
+  if(f.c)return e.c/f.c;
+  if(f.f)return e.f/f.f;
+  if(f.k)return e.k/f.k;
+  return 1;
+}
+function sodiumForEntry(e){
+  const f=foods.find(x=>x.id===e.foodId);
+  if(!f||f.na==null)return null;
+  return f.na*estimateLogMult(f,e);
+}
+function sodiumTotal(log){
+  return log.reduce((total,e)=>{
+    const v=sodiumForEntry(e);
+    return v==null?total:total+v;
+  },0);
+}
 function updateRing(tot){
   document.getElementById('ring').style.background=ringBgFor(tot);
   document.getElementById('ringKcal').textContent=r0(tot.k);
@@ -906,8 +985,11 @@ function renderAll(){
   const t=prof().t,tot=sum(todayLog);
   document.getElementById('pNow').textContent=r0(tot.p);
   document.getElementById('pTgt').textContent=t.p;
+  document.getElementById('kcalNow').textContent=r0(tot.k);
+  document.getElementById('kcalTgt').textContent=t.k;
   updateRing(tot);
-  const strip=[['Carbs',tot.c,t.c,'var(--ochre)'],['Fat',tot.f,t.f,'var(--macro-fat)'],['Sugar',tot.s,t.s,'var(--macro-sugar)'],['kcal',tot.k,t.k,null]];
+  const na=sodiumTotal(todayLog);
+  const strip=[['Carbs',tot.c,t.c,'var(--ochre)'],['Fat',tot.f,t.f,'var(--macro-fat)'],['Sugar',tot.s,t.s,'var(--macro-sugar)'],['Sodium',na,SODIUM_TARGET_MG,'var(--macro-sodium)']];
   document.getElementById('strip').innerHTML=strip.map(([k,v,tg,col])=>
     `<div class="cell"><div class="k">${col?`<i style="background:${col}"></i>`:''}${k}</div><div class="v mono">${r0(v)}<span> / ${tg}</span></div></div>`).join('');
   const hit=new Set();todayLog.forEach(e=>(e.m||[]).forEach(m=>hit.add(m)));
@@ -920,6 +1002,7 @@ function renderAll(){
     <div class="entry"><div class="info"><div class="nm">${e.name}</div>
       <div class="meta">${e.multLabel} · ${r0(e.k)} kcal${e.m&&e.m.length?' · '+e.m.map(mLabel).join(', '):''}</div></div>
       <div class="pgram mono">${r0(e.p)}<small> P</small></div>
+      <button class="edit" onclick="editLoggedFood(${i})">✎</button>
       <button class="rm" onclick="removeFood(${i})">✕</button></div>`).join('')
     :`<div class="empty">${viewDate===today?'Nothing logged yet. Your foods are one tap away.':'Nothing logged for this day.'}</div>`;
   document.getElementById('exCount').textContent=todayEx.length+(todayEx.length===1?' session':' sessions');
@@ -986,6 +1069,24 @@ function pickFood(id){
   document.getElementById('presets').innerHTML=[0.5,1,1.5,2].map(m=>`<div class="pre ${m===1?'sel':''}" data-m="${m}" onclick="setPreset(${m})">×${m}</div>`).join('');
   document.getElementById('multInput').value=1;updatePreview();
 }
+function editLoggedFood(i){
+  const row=todayLog[i];if(!row)return;
+  const f=foods.find(x=>x.id===row.foodId);
+  if(!f){alert("This food is no longer in your library, so it can't be edited here — remove it and log it fresh instead.");return;}
+  editingLogId=row.id;curFood=f;
+  curMult=Math.round(estimateLogMult(f,row)*100)/100;
+  document.getElementById('foodBrowse').style.display='none';
+  document.getElementById('newFood').style.display='none';
+  document.getElementById('foodPick').style.display='';
+  document.getElementById('pickName').textContent=f.name;
+  document.getElementById('pickPortion').textContent='Base portion: '+f.portion;
+  document.getElementById('presets').innerHTML=[0.5,1,1.5,2].map(m=>`<div class="pre ${m===curMult?'sel':''}" data-m="${m}" onclick="setPreset(${m})">×${m}</div>`).join('');
+  document.getElementById('multInput').value=curMult;
+  document.getElementById('addFoodBtn').textContent='Save changes';
+  document.getElementById('foodSheetTitle').textContent='Edit logged food';
+  updatePreview();
+  openSheet('foodSheet');
+}
 function setPreset(m){curMult=m;document.getElementById('multInput').value=m;syncPreset();updatePreview();}
 function stepMult(d){curMult=Math.max(0.25,Math.round((curMult+d*0.25)*100)/100);document.getElementById('multInput').value=curMult;syncPreset();updatePreview();}
 function onMultInput(){curMult=parseFloat(document.getElementById('multInput').value)||1;syncPreset();updatePreview();}
@@ -1004,6 +1105,7 @@ function updatePreview(){
     <div class="prow"><span>Fat</span><b>${r1(f.f*m)} g</b></div>
     <div class="prow"><span>Added sugar</span><b>${r1(f.s*m)} g</b></div>
     <div class="prow"><span>Calories</span><b>${r0(f.k*m)} kcal</b></div>
+    <div class="prow"><span>Sodium</span><b>${f.na==null?'—':r0(f.na*m)+' mg'}</b></div>
     ${microLine?`<div class="pmicro">Micro sources: ${microLine}</div>`:''}`;
 }
 function scalePortion(portion,m){const mt=portion.match(/^([\d.]+)\s*(.*)$/);return mt?r1(parseFloat(mt[1])*m)+' '+mt[2]:'×'+m+' '+portion;}
@@ -1012,11 +1114,17 @@ async function confirmFood(){
   const mAmt={};Object.entries(f.mAmt||{}).forEach(([id,v])=>{mAmt[id]=v*m;});
   const payload={profile_id:active,log_date:viewDate,food_id:f.id,name:f.name,mult_label:scalePortion(f.portion,m),
     protein:f.p*m,carbs:f.c*m,fat:f.f*m,sugar:f.s*m,kcal:f.k*m,fibre:(f.fib||0)*m,micro_tags:f.m||[],micro_amounts:mAmt};
-  const res=await sbWrite(sb.from('food_logs').insert(payload));
+  const wasEdit=!!editingLogId;
+  const res=wasEdit
+    ? await sbWrite(sb.from('food_logs').update(payload).eq('id',editingLogId))
+    : await sbWrite(sb.from('food_logs').insert(payload));
   if(!res.ok)return;
+  editingLogId=null;
   await loadDay();renderAll();
   showBrowse();renderFoodList();renderRecents();
-  flashAdded('foodAddFlash',f.name+' added ✓');
+  document.getElementById('addFoodBtn').textContent=addBtnLabel();
+  document.getElementById('foodSheetTitle').textContent='Log food'+sheetDateSuffix();
+  flashAdded('foodAddFlash',f.name+(wasEdit?' updated ✓':' added ✓'));
 }
 async function removeFood(i){
   const row=todayLog[i];if(!row)return;
@@ -1246,6 +1354,9 @@ async function renderWeekSheet(){
   const totalSum=k=>totals.reduce((a,tt)=>a+tt[k],0);
   const avg=k=>totals.length?totalSum(k)/totals.length:null;
   const avgCell=k=>{const v=avg(k);return v==null?'—':r0(v);};
+  const naTotals=withFood.map(d=>sodiumTotal(d.log));
+  const naTotalSum=naTotals.reduce((a,b)=>a+b,0);
+  const naAvg=naTotals.length?naTotalSum/naTotals.length:null;
   const t=prof().t;
   const microTotals={},microTagged={};MICROS.forEach(m=>{microTotals[m.id]=0;microTagged[m.id]=0;});
   days.forEach(d=>d.log.forEach(e=>{
@@ -1260,25 +1371,27 @@ async function renderWeekSheet(){
   const rows=days.map(d=>{
     const hasFood=d.log.length>0;
     const s=hasFood?sum(d.log):null;
+    const na=hasFood?sodiumTotal(d.log):null;
     const exMin=d.ex.length?d.ex.reduce((a,e)=>a+(e.min||0),0):null;
     const cls=[d.date===today?'wk-today':'',hasFood?'':'wk-empty'].filter(Boolean).join(' ');
     return `<tr class="${cls}">
       <td>${shortDayLabel(d.date)}</td>
       <td>${cell(s&&s.p)}</td><td>${cell(s&&s.c)}</td><td>${cell(s&&s.f)}</td>
       <td>${cell(s&&s.s)}</td><td>${cell(s&&s.fib)}</td><td>${cell(s&&s.k)}</td>
+      <td>${cell(na)}</td>
       <td>${cell(exMin)}</td>
     </tr>`;
   }).join('');
   const totalRow=`<tr class="wk-total">
     <td>Total</td><td>${r0(totalSum('p'))}</td><td>${r0(totalSum('c'))}</td><td>${r0(totalSum('f'))}</td>
-    <td>${r0(totalSum('s'))}</td><td>${r0(totalSum('fib'))}</td><td>${r0(totalSum('k'))}</td><td>${totalExMin}</td>
+    <td>${r0(totalSum('s'))}</td><td>${r0(totalSum('fib'))}</td><td>${r0(totalSum('k'))}</td><td>${r0(naTotalSum)}</td><td>${totalExMin}</td>
   </tr>`;
   const avgRow=`<tr class="wk-avgrow">
     <td>Avg/day</td><td>${avgCell('p')}</td><td>${avgCell('c')}</td><td>${avgCell('f')}</td>
-    <td>${avgCell('s')}</td><td>${avgCell('fib')}</td><td>${avgCell('k')}</td><td>${avgExCell}</td>
+    <td>${avgCell('s')}</td><td>${avgCell('fib')}</td><td>${avgCell('k')}</td><td>${naAvg==null?'—':r0(naAvg)}</td><td>${avgExCell}</td>
   </tr>`;
   const targetRow=`<tr class="wk-target">
-    <td>Target</td><td>${t.p}</td><td>${t.c}</td><td>${t.f}</td><td>${t.s}</td><td>—</td><td>${t.k}</td><td>—</td>
+    <td>Target</td><td>${t.p}</td><td>${t.c}</td><td>${t.f}</td><td>${t.s}</td><td>—</td><td>${t.k}</td><td>${SODIUM_TARGET_MG}</td><td>—</td>
   </tr>`;
 
   const exEntries=[];
@@ -1305,11 +1418,11 @@ async function renderWeekSheet(){
     <div class="grp-lbl">Daily breakdown</div>
     <div class="wk-table-wrap">
       <table class="wk-table">
-        <thead><tr><th>Day</th><th>P</th><th>C</th><th>F</th><th>Sugar</th><th>Fibre</th><th>kcal</th><th>Ex</th></tr></thead>
+        <thead><tr><th>Day</th><th>P</th><th>C</th><th>F</th><th>Sugar</th><th>Fibre</th><th>kcal</th><th>Na</th><th>Ex</th></tr></thead>
         <tbody>${rows}${totalRow}${avgRow}${targetRow}</tbody>
       </table>
     </div>
-    <div class="hint">Grams for P/C/F/Sugar/Fibre · minutes for Ex · today's row highlighted · Avg is per day actually logged, not per calendar day.</div>
+    <div class="hint">Grams for P/C/F/Sugar/Fibre · mg for Na (estimated from logged foods, directional not lab-verified) · minutes for Ex · today's row highlighted · Avg is per day actually logged, not per calendar day.</div>
     <div class="grp-lbl">Exercise log this week</div>
     ${exLogHtml}
     <div class="grp-lbl">Micronutrient totals this week</div>
@@ -1399,11 +1512,11 @@ async function openExport(){
   document.getElementById('tabWeek').textContent=ws===weekStart(today)?'This week':fmtRange(ws,addDays(ws,6));
   setExportRange('day');openSheet('exportSheet');
 }
-function fmtTot(t){return `P ${r0(t.p)} · C ${r0(t.c)} · F ${r0(t.f)} · Sugar ${r0(t.s)} · Fibre ${r0(t.fib)} · ${r0(t.k)} kcal`;}
+function fmtTot(t,na){return `P ${r0(t.p)} · C ${r0(t.c)} · F ${r0(t.f)} · Sugar ${r0(t.s)} · Fibre ${r0(t.fib)} · ${r0(t.k)} kcal`+(na==null?'':` · Na ${r0(na)} mg`);}
 async function buildExport(){
   const p=prof(),t=p.t;
   let out=`# Gigatrack — ${p.name}\n`;
-  out+=`Reference targets: P ${t.p} · C ${t.c} · F ${t.f} (ceiling) · Added sugar ${t.s} (ceiling) · ${t.k} kcal\n`;
+  out+=`Reference targets: P ${t.p} · C ${t.c} · F ${t.f} (ceiling) · Added sugar ${t.s} (ceiling) · ${t.k} kcal · Na ${SODIUM_TARGET_MG} mg (general ceiling, not personalized)\n`;
   if(p.age)out+=`Age: ${p.age}\n`;
   if(p.note)out+=`Health note: ${p.note}\n`;
   out+=`\n`;
@@ -1423,8 +1536,8 @@ async function buildExport(){
     out+=`## ${d}\n`;
     if(log.length){
       out+=`Food:\n`;
-      log.forEach(e=>{out+=`- ${e.name} (${e.multLabel}): P ${r1(e.p)} C ${r1(e.c)} F ${r1(e.f)} Sugar ${r1(e.s)} — ${r0(e.k)} kcal${e.m&&e.m.length?` [${e.m.map(mLabel).join(', ')}]`:''}\n`;});
-      out+=`Total: ${fmtTot(sum(log))}\n`;
+      log.forEach(e=>{const na=sodiumForEntry(e);out+=`- ${e.name} (${e.multLabel}): P ${r1(e.p)} C ${r1(e.c)} F ${r1(e.f)} Sugar ${r1(e.s)} — ${r0(e.k)} kcal${na==null?'':` · Na ~${r0(na)}mg`}${e.m&&e.m.length?` [${e.m.map(mLabel).join(', ')}]`:''}\n`;});
+      out+=`Total: ${fmtTot(sum(log),sodiumTotal(log))}\n`;
       const hit=new Set();log.forEach(e=>(e.m||[]).forEach(m=>hit.add(m)));
       out+=`Micro sources: ${hit.size?[...hit].map(mLabel).join(', '):'none'}\n`;
     } else out+=`Food: none logged\n`;
@@ -1435,9 +1548,11 @@ async function buildExport(){
   }
   if(exportRange==='week'){
     const totals=fetched.filter(x=>x.log.length).map(x=>sum(x.log));
+    const naTotals=fetched.filter(x=>x.log.length).map(x=>sodiumTotal(x.log));
     if(totals.length){const avg=k=>r0(totals.reduce((a,tt)=>a+tt[k],0)/totals.length);
+      const avgNa=r0(naTotals.reduce((a,b)=>a+b,0)/naTotals.length);
       out+=`## Week summary (${fmtRange(dates[0],dates[dates.length-1])} · avg/day over ${totals.length} logged days)\n`;
-      out+=`P ${avg('p')} · C ${avg('c')} · F ${avg('f')} · Sugar ${avg('s')} · Fibre ${avg('fib')} · ${avg('k')} kcal\n`;
+      out+=`P ${avg('p')} · C ${avg('c')} · F ${avg('f')} · Sugar ${avg('s')} · Fibre ${avg('fib')} · ${avg('k')} kcal · Na ${avgNa} mg\n`;
       const microTotals={},microTagged={};MICROS.forEach(m=>{microTotals[m.id]=0;microTagged[m.id]=0;});
       fetched.forEach(x=>x.log.forEach(e=>{
         (e.m||[]).forEach(id=>{if(microTagged[id]!=null)microTagged[id]++;});
@@ -1475,7 +1590,7 @@ function doDownload(){
 
 /* ---------- sheets ---------- */
 function openSheet(id){document.getElementById('scrim').classList.add('on');document.getElementById(id).classList.add('on');}
-function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));}
+function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));editingLogId=null;}
 
 /* ---------- background refresh ---------- */
 const REFRESH_MS=25000;
