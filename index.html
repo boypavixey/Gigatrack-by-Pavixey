@@ -87,6 +87,9 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .sec-head{display:flex;justify-content:space-between;align-items:center;margin:22px 4px 10px}
 .sec-head h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:0;color:var(--muted)}
 .sec-head .tot{font-size:12px;color:var(--muted);font-weight:600}
+.sec-actions{display:flex;align-items:center;gap:10px}
+.clear-all{background:transparent;border:none;color:var(--danger);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:inherit}
+.clear-all:active{opacity:.7}
 
 .entries{display:flex;flex-direction:column;gap:8px}
 .entry{background:transparent;border:1px solid rgba(255,255,255,0.04);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:12px}
@@ -319,7 +322,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
     <button onclick="openWeekly()">📊 This week</button>
   </div>
 
-  <div class="sec-head"><h2 id="foodHead">Food today</h2><span class="tot" id="foodCount">0 items</span></div>
+  <div class="sec-head"><h2 id="foodHead">Food today</h2><span class="sec-actions"><button class="clear-all" id="clearFoodBtn" onclick="clearAllFood()" style="display:none">Clear all</button><span class="tot" id="foodCount">0 items</span></span></div>
   <div class="entries" id="foodEntries"></div>
 
   <div class="sec-head"><h2 id="exHead">Exercise today</h2><span class="tot" id="exCount">0</span></div>
@@ -999,6 +1002,7 @@ function renderAll(){
   mt.innerHTML=hit.size?[...hit].map(m=>`<span class="mchip">${mLabel(m)}</span>`).join('')
     :`<span class="mnone">No micro sources logged for this day.</span>`;
   document.getElementById('foodCount').textContent=todayLog.length+(todayLog.length===1?' item':' items');
+  document.getElementById('clearFoodBtn').style.display=todayLog.length?'':'none';
   const fe=document.getElementById('foodEntries');
   fe.innerHTML=todayLog.length?todayLog.map((e,i)=>`
     <div class="entry"><div class="info"><div class="nm">${e.name}</div>
@@ -1131,6 +1135,14 @@ async function confirmFood(){
 async function removeFood(i){
   const row=todayLog[i];if(!row)return;
   const res=await sbWrite(sb.from('food_logs').delete().eq('id',row.id));
+  if(!res.ok)return;
+  await loadDay();renderAll();
+}
+async function clearAllFood(){
+  if(!todayLog.length)return;
+  const n=todayLog.length;
+  if(!confirm(`Remove all ${n} food ${n===1?'entry':'entries'} logged for ${viewDate===today?'today':relDateLower(viewDate)}? This can't be undone.`))return;
+  const res=await sbWrite(sb.from('food_logs').delete().eq('profile_id',active).eq('log_date',viewDate));
   if(!res.ok)return;
   await loadDay();renderAll();
 }
