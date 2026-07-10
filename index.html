@@ -43,8 +43,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .dnav{flex:0 0 auto;width:34px;height:34px;border:1px solid var(--hair);border-radius:10px;background:var(--surface);font-size:16px;font-weight:700;color:var(--ink);cursor:pointer}
 .dnav:active{background:var(--paper)}
 .dpick{position:relative;flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--hair);border-radius:10px;background:var(--surface);height:34px;cursor:pointer}
-.dlabel{font-size:13px;font-weight:700;pointer-events:none}
-.dpick input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;cursor:pointer}
+.dlabel{font-size:13px;font-weight:700}
 .dtoday{flex:0 0 auto;padding:0 12px;height:34px;border:1px solid var(--jade);border-radius:10px;background:rgba(21,140,106,.1);color:var(--jade);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 
 .dateFull{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:10px 12px;margin:0 0 14px;border:1px solid rgba(255,255,255,0.04);border-radius:12px;background:transparent}
@@ -222,6 +221,18 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .wk-range .wk-rel{font-size:13px;font-weight:800;color:var(--ink)}
 .wk-range .wk-dates{font-size:11px;font-weight:600;color:var(--muted)}
 .wk-jump{flex:0 0 auto;padding:0 12px;height:34px;border:1px solid var(--jade);border-radius:10px;background:rgba(21,140,106,.1);color:var(--jade);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+
+.dcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.dcal-cell{display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 2px;border-radius:12px;border:1px solid transparent;background:transparent;font-family:inherit;cursor:pointer}
+.dcal-cell:active{background:var(--surface)}
+.dcal-cell.out{opacity:.25}
+.dcal-cell.sel{border-color:var(--jade);background:rgba(21,140,106,.1)}
+.dcal-date{font-size:11px;font-weight:800;color:var(--ink)}
+.dcal-date small{font-size:9px;font-weight:600;color:var(--muted)}
+.dcal-cell.today .dcal-date{color:var(--jade)}
+.dcal-ring{width:28px;height:28px}
+.dcal-ring i{display:block;width:100%;height:100%;border-radius:50%;background:conic-gradient(rgba(255,255,255,.08) 0 100%);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 4px))}
+.dcal-kcal{font-size:9px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;min-height:11px}
 .export-tabs{display:flex;gap:8px;margin-bottom:12px}
 .export-tabs button{flex:1;padding:11px;border:1px solid var(--hair);border-radius:11px;background:var(--surface);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .export-tabs button.sel{background:var(--jade);color:#07100e;border-color:var(--jade)}
@@ -265,9 +276,8 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 
   <div class="dateBar">
     <button class="dnav" onclick="shiftDay(-1)">‹</button>
-    <div class="dpick" id="dpickWrap">
+    <div class="dpick" id="dpickWrap" onclick="openDateSheet()">
       <span class="dlabel mono" id="dateLabel">Today</span>
-      <input type="date" id="datePick" onchange="onDatePick()">
     </div>
     <button class="dnav" onclick="shiftDay(1)">›</button>
     <button class="dtoday" id="jumpToday" onclick="goToday()" style="display:none">Today</button>
@@ -406,6 +416,13 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
   <div class="grab"></div>
   <div class="sheet-head"><h3>Weekly summary</h3><button class="x" onclick="closeSheet()">✕</button></div>
   <div class="sheet-body" id="weekBody"></div>
+</div>
+
+<!-- DATE SHEET -->
+<div class="sheet" id="dateSheet">
+  <div class="grab"></div>
+  <div class="sheet-head"><h3>Jump to date</h3><button class="x" onclick="closeSheet()">✕</button></div>
+  <div class="sheet-body" id="dateSheetBody"></div>
 </div>
 
 <!-- TARGETS SHEET -->
@@ -838,14 +855,7 @@ function prof(){return profiles.find(p=>p.id===active)||profiles[0];}
 function sum(arr){return arr.reduce((a,e)=>({p:a.p+e.p,c:a.c+e.c,f:a.f+e.f,s:a.s+e.s,k:a.k+e.k,fib:a.fib+(e.fib||0)}),{p:0,c:0,f:0,s:0,k:0,fib:0});}
 const r1=n=>Math.round(n*10)/10, r0=n=>Math.round(n);
 function updateRing(tot){
-  const pk=tot.p*4,ck=tot.c*4,fk=tot.f*9,total=pk+ck+fk;
-  const ring=document.getElementById('ring');
-  if(total<=0){
-    ring.style.background='conic-gradient(rgba(255,255,255,.08) 0 100%)';
-  }else{
-    const s1=pk/total*100,s2=s1+ck/total*100;
-    ring.style.background=`conic-gradient(var(--macro-protein) 0% ${s1}%, var(--ochre) ${s1}% ${s2}%, var(--macro-fat) ${s2}% 100%)`;
-  }
+  document.getElementById('ring').style.background=ringBgFor(tot);
   document.getElementById('ringKcal').textContent=r0(tot.k);
 }
 
@@ -877,7 +887,6 @@ function fullDateNumeric(d){
 }
 function renderDateBar(){
   document.getElementById('dateLabel').textContent=dateLabelFor(viewDate);
-  document.getElementById('datePick').value=viewDate;
   document.getElementById('jumpToday').style.display=viewDate===today?'none':'';
   document.getElementById('dateWords').textContent=fullDateWords(viewDate);
   document.getElementById('dateNums').textContent='('+fullDateNumeric(viewDate)+')';
@@ -892,11 +901,6 @@ async function shiftDay(n){
   viewDate=dstr(d);await loadDay();renderAll();
 }
 async function goToday(){viewDate=today;await loadDay();renderAll();}
-async function onDatePick(){
-  const v=document.getElementById('datePick').value;
-  if(!v)return;
-  viewDate=v;await loadDay();renderAll();
-}
 function renderAll(){
   renderDateBar();
   const t=prof().t,tot=sum(todayLog);
@@ -1216,6 +1220,7 @@ function fmtRange(startD,endD){
 }
 function weekOrdinalLabel(n){return n===1?'Started week':'Week '+n;}
 let weekAnchorStart=null;
+let calAnchorMonth=null;
 async function openWeekly(){
   weekAnchorStart=weekStart(viewDate);
   await renderWeekSheet();
@@ -1317,6 +1322,69 @@ async function renderWeekSheet(){
       return `<div class="wk-row"><span class="wl">${m.label}</span><span class="wc ${cls}">${disp}</span></div>`;}).join('')+`</div>
     <div class="hint">Totals use typical per-portion estimates for library foods — ✎ edit a food to replace an estimate with an exact label value. "Logged, no amount yet" means a tagged source was eaten but has no amount set (usually a custom food you added yourself).</div>`;
   document.getElementById('weekBody').innerHTML=html;
+}
+
+/* ---------- date calendar ---------- */
+function monthStart(d){const dt=new Date(d+'T00:00:00');dt.setDate(1);return dstr(dt);}
+function addMonths(d,n){const dt=new Date(d+'T00:00:00');dt.setDate(1);dt.setMonth(dt.getMonth()+n);return dstr(dt);}
+function monthLabel(d){const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString(undefined,{month:'long',year:'numeric'});}
+function ringBgFor(tot){
+  if(!tot)return 'conic-gradient(rgba(255,255,255,.08) 0 100%)';
+  const pk=tot.p*4,ck=tot.c*4,fk=tot.f*9,total=pk+ck+fk;
+  if(total<=0)return 'conic-gradient(rgba(255,255,255,.08) 0 100%)';
+  const s1=pk/total*100,s2=s1+ck/total*100;
+  return `conic-gradient(var(--macro-protein) 0% ${s1}%, var(--ochre) ${s1}% ${s2}%, var(--macro-fat) ${s2}% 100%)`;
+}
+async function openDateSheet(){
+  calAnchorMonth=monthStart(viewDate);
+  await renderDateSheet();
+  openSheet('dateSheet');
+}
+async function shiftMonth(n){calAnchorMonth=addMonths(calAnchorMonth,n);await renderDateSheet();}
+async function jumpThisMonth(){calAnchorMonth=monthStart(today);await renderDateSheet();}
+async function selectCalDate(d){viewDate=d;await loadDay();renderAll();closeSheet();}
+async function renderDateSheet(){
+  const range=await getProfileDateRange(active);
+  const firstData=range.min||today;
+  const lastData=(range.max&&range.max>today)?range.max:today;
+  const minMonth=monthStart(firstData),maxMonth=monthStart(lastData);
+  if(calAnchorMonth<minMonth)calAnchorMonth=minMonth;
+  if(calAnchorMonth>maxMonth)calAnchorMonth=maxMonth;
+
+  const first=new Date(calAnchorMonth+'T00:00:00');
+  const dim=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
+  const leadDays=(first.getDay()+6)%7;
+  const gridStart=addDays(calAnchorMonth,-leadDays);
+  const totalCells=Math.ceil((leadDays+dim)/7)*7;
+  const gridDates=[];for(let i=0;i<totalCells;i++)gridDates.push(addDays(gridStart,i));
+
+  const {logsByDate}=await fetchRangeData(active,gridDates[0],gridDates[gridDates.length-1]);
+
+  const prevDisabled=calAnchorMonth<=minMonth;
+  const nextDisabled=calAnchorMonth>=maxMonth;
+
+  const cells=gridDates.map(d=>{
+    const inMonth=d.slice(0,7)===calAnchorMonth.slice(0,7);
+    const log=logsByDate[d]||[];
+    const tot=log.length?sum(log):null;
+    const dt=new Date(d+'T00:00:00');
+    const cls=[inMonth?'':'out',d===today?'today':'',d===viewDate?'sel':''].filter(Boolean).join(' ');
+    return `<button type="button" class="dcal-cell ${cls}" onclick="selectCalDate('${d}')">
+      <span class="dcal-date">${pad2(dt.getDate())}<small>/${dt.toLocaleDateString(undefined,{weekday:'short'})}</small></span>
+      <span class="dcal-ring"><i style="background:${ringBgFor(tot)}"></i></span>
+      <span class="dcal-kcal">${tot?r0(tot.k):''}</span>
+    </button>`;
+  }).join('');
+
+  const html=`<div class="wk-nav">
+      <button class="dnav" ${prevDisabled?'disabled':''} onclick="shiftMonth(-1)">‹</button>
+      <div class="wk-range"><span class="wk-rel">${monthLabel(calAnchorMonth)}</span></div>
+      <button class="dnav" ${nextDisabled?'disabled':''} onclick="shiftMonth(1)">›</button>
+      ${calAnchorMonth!==monthStart(today)?'<button class="wk-jump" onclick="jumpThisMonth()">This month</button>':''}
+    </div>
+    <div class="hint">Tap a date to jump to it · ring shows that day's protein/carb/fat split · kcal is total logged that day.</div>
+    <div class="dcal-grid">${cells}</div>`;
+  document.getElementById('dateSheetBody').innerHTML=html;
 }
 
 /* ---------- export ---------- */
