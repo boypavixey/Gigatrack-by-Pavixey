@@ -423,6 +423,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
   <div class="grab"></div>
   <div class="sheet-head"><h3>Weekly summary</h3><button class="x" onclick="closeSheet()">✕</button></div>
   <div class="sheet-body" id="weekBody"></div>
+  <div class="sheet-foot"><button class="done-btn" onclick="closeSheet()">Close</button></div>
 </div>
 
 <!-- DATE SHEET -->
@@ -1334,6 +1335,12 @@ function fmtRange(startD,endD){
     :`${s.getDate()} ${sMon} ${s.getFullYear()} – ${e.getDate()} ${eMon} ${e.getFullYear()}`;
 }
 function weekOrdinalLabel(n){return n===1?'Started week':'Week '+n;}
+function relWeekLabel(anchor,maxWeekStart){
+  const diff=Math.round((new Date(maxWeekStart+'T00:00:00')-new Date(anchor+'T00:00:00'))/(7*864e5));
+  if(diff<=0)return 'This week';
+  if(diff===1)return 'Last week';
+  return diff+' weeks ago';
+}
 let weekAnchorStart=null;
 let calAnchorMonth=null;
 async function openWeekly(){
@@ -1345,12 +1352,10 @@ async function shiftWeek(n){weekAnchorStart=addDays(weekAnchorStart,n*7);await r
 async function jumpThisWeek(){weekAnchorStart=weekStart(today);await renderWeekSheet();}
 async function renderWeekSheet(){
   const range=await getProfileDateRange(active);
-  const firstData=range.min||today;
-  const lastData=(range.max&&range.max>today)?range.max:today;
-  const minWeekStart=weekStart(firstData),maxWeekStart=weekStart(lastData);
-  if(weekAnchorStart<minWeekStart)weekAnchorStart=minWeekStart;
+  const maxWeekStart=weekStart(today);
   if(weekAnchorStart>maxWeekStart)weekAnchorStart=maxWeekStart;
-  const weekNo=Math.round((new Date(weekAnchorStart+'T00:00:00')-new Date(minWeekStart+'T00:00:00'))/(7*864e5))+1;
+  const minWeekStart=range.min?weekStart(range.min):null;
+  const weekNo=minWeekStart?Math.round((new Date(weekAnchorStart+'T00:00:00')-new Date(minWeekStart+'T00:00:00'))/(7*864e5))+1:null;
 
   const dates=weekDates(weekAnchorStart);
   const {logsByDate,exByDate}=await fetchRangeData(active,dates[0],dates[6]);
@@ -1410,12 +1415,11 @@ async function renderWeekSheet(){
         ${e.note?`<div class="note">“${e.note}”</div>`:''}</div></div>`).join('')+`</div>`
     :`<div class="empty">No sessions logged this week.</div>`;
 
-  const prevDisabled=weekAnchorStart<=minWeekStart;
   const nextDisabled=weekAnchorStart>=maxWeekStart;
   const html=`<div class="wk-nav">
-      <button class="dnav" ${prevDisabled?'disabled':''} onclick="shiftWeek(-1)">‹</button>
+      <button class="dnav" onclick="shiftWeek(-1)">‹</button>
       <div class="wk-range">
-        <span class="wk-rel">${weekOrdinalLabel(weekNo)}</span>
+        <span class="wk-rel">${weekNo!=null&&weekNo>=1?weekOrdinalLabel(weekNo):relWeekLabel(weekAnchorStart,maxWeekStart)}</span>
         <span class="wk-dates">${fmtRange(dates[0],dates[6])}</span>
       </div>
       <button class="dnav" ${nextDisabled?'disabled':''} onclick="shiftWeek(1)">›</button>
@@ -1464,11 +1468,7 @@ async function shiftMonth(n){calAnchorMonth=addMonths(calAnchorMonth,n);await re
 async function jumpThisMonth(){calAnchorMonth=monthStart(today);await renderDateSheet();}
 async function selectCalDate(d){viewDate=d;await loadDay();renderAll();closeSheet();}
 async function renderDateSheet(){
-  const range=await getProfileDateRange(active);
-  const firstData=range.min||today;
-  const lastData=(range.max&&range.max>today)?range.max:today;
-  const minMonth=monthStart(firstData),maxMonth=monthStart(lastData);
-  if(calAnchorMonth<minMonth)calAnchorMonth=minMonth;
+  const maxMonth=monthStart(today);
   if(calAnchorMonth>maxMonth)calAnchorMonth=maxMonth;
 
   const first=new Date(calAnchorMonth+'T00:00:00');
@@ -1480,7 +1480,6 @@ async function renderDateSheet(){
 
   const {logsByDate}=await fetchRangeData(active,gridDates[0],gridDates[gridDates.length-1]);
 
-  const prevDisabled=calAnchorMonth<=minMonth;
   const nextDisabled=calAnchorMonth>=maxMonth;
 
   const cells=gridDates.map(d=>{
@@ -1497,7 +1496,7 @@ async function renderDateSheet(){
   }).join('');
 
   const html=`<div class="wk-nav">
-      <button class="dnav" ${prevDisabled?'disabled':''} onclick="shiftMonth(-1)">‹</button>
+      <button class="dnav" onclick="shiftMonth(-1)">‹</button>
       <div class="wk-range"><span class="wk-rel">${monthLabel(calAnchorMonth)}</span></div>
       <button class="dnav" ${nextDisabled?'disabled':''} onclick="shiftMonth(1)">›</button>
       ${calAnchorMonth!==monthStart(today)?'<button class="wk-jump" onclick="jumpThisMonth()">This month</button>':''}
