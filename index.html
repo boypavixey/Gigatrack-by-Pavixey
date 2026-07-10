@@ -44,7 +44,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .dnav:active{background:var(--paper)}
 .dpick{position:relative;flex:1;display:flex;align-items:center;justify-content:center;border:1px solid var(--hair);border-radius:10px;background:var(--surface);height:34px;cursor:pointer}
 .dlabel{font-size:13px;font-weight:700;pointer-events:none}
-.dpick input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;pointer-events:none}
+.dpick input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:none;cursor:pointer}
 .dtoday{flex:0 0 auto;padding:0 12px;height:34px;border:1px solid var(--jade);border-radius:10px;background:rgba(21,140,106,.1);color:var(--jade);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
 
 .dateFull{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;padding:10px 12px;margin:0 0 14px;border:1px solid rgba(255,255,255,0.04);border-radius:12px;background:transparent}
@@ -265,7 +265,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 
   <div class="dateBar">
     <button class="dnav" onclick="shiftDay(-1)">‹</button>
-    <div class="dpick" id="dpickWrap" onclick="openDatePicker()">
+    <div class="dpick" id="dpickWrap">
       <span class="dlabel mono" id="dateLabel">Today</span>
       <input type="date" id="datePick" onchange="onDatePick()">
     </div>
@@ -897,12 +897,6 @@ async function onDatePick(){
   if(!v)return;
   viewDate=v;await loadDay();renderAll();
 }
-function openDatePicker(){
-  const el=document.getElementById('datePick');
-  if(el.showPicker){try{el.showPicker();return;}catch(e){}}
-  el.focus();try{el.click();}catch(e){}
-}
-
 function renderAll(){
   renderDateBar();
   const t=prof().t,tot=sum(todayLog);
