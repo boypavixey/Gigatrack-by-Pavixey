@@ -121,7 +121,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
 .scrim.on{opacity:1;pointer-events:auto}
-.sheet{position:fixed;left:0;right:0;bottom:0;max-width:440px;margin:0 auto;z-index:21;background:linear-gradient(180deg,#0e0f10,rgba(0,0,0,0.6));border-radius:22px 22px 0 0;transform:translateY(102%);transition:transform .3s cubic-bezier(.22,1,.36,1);max-height:90vh;display:flex;flex-direction:column}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:440px;margin:0 auto;z-index:21;background:linear-gradient(180deg,#0e0f10,#000000);border-radius:22px 22px 0 0;transform:translateY(102%);transition:transform .3s cubic-bezier(.22,1,.36,1);max-height:90vh;display:flex;flex-direction:column}
 .sheet.on{transform:translateY(0)}
 .sheet-head{padding:14px 18px 8px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
 .sheet-head h3{font-size:17px;font-weight:800;margin:0;color:var(--ink)}
@@ -1468,9 +1468,6 @@ async function shiftMonth(n){calAnchorMonth=addMonths(calAnchorMonth,n);await re
 async function jumpThisMonth(){calAnchorMonth=monthStart(today);await renderDateSheet();}
 async function selectCalDate(d){viewDate=d;await loadDay();renderAll();closeSheet();}
 async function renderDateSheet(){
-  const maxMonth=monthStart(today);
-  if(calAnchorMonth>maxMonth)calAnchorMonth=maxMonth;
-
   const first=new Date(calAnchorMonth+'T00:00:00');
   const dim=new Date(first.getFullYear(),first.getMonth()+1,0).getDate();
   const leadDays=(first.getDay()+6)%7;
@@ -1479,8 +1476,6 @@ async function renderDateSheet(){
   const gridDates=[];for(let i=0;i<totalCells;i++)gridDates.push(addDays(gridStart,i));
 
   const {logsByDate}=await fetchRangeData(active,gridDates[0],gridDates[gridDates.length-1]);
-
-  const nextDisabled=calAnchorMonth>=maxMonth;
 
   const cells=gridDates.map(d=>{
     const inMonth=d.slice(0,7)===calAnchorMonth.slice(0,7);
@@ -1498,7 +1493,7 @@ async function renderDateSheet(){
   const html=`<div class="wk-nav">
       <button class="dnav" onclick="shiftMonth(-1)">‹</button>
       <div class="wk-range"><span class="wk-rel">${monthLabel(calAnchorMonth)}</span></div>
-      <button class="dnav" ${nextDisabled?'disabled':''} onclick="shiftMonth(1)">›</button>
+      <button class="dnav" onclick="shiftMonth(1)">›</button>
       ${calAnchorMonth!==monthStart(today)?'<button class="wk-jump" onclick="jumpThisMonth()">This month</button>':''}
     </div>
     <div class="hint">Tap a date to jump to it · ring shows that day's protein/carb/fat split · kcal is total logged that day.</div>
