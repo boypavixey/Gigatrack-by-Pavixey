@@ -392,12 +392,20 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
   <div class="grab"></div>
   <div class="sheet-head"><h3 id="exSheetTitle">Log exercise</h3><button class="x" onclick="closeSheet()">✕</button></div>
   <div class="sheet-body">
-    <div class="grp-lbl">Session type</div>
+    <div class="grp-lbl">Exercise type</div>
     <div class="type-chips" id="exTypes"></div>
+    <div id="exCustomForm" style="display:none">
+      <div class="field"><label>Custom exercise name</label><input id="ecName" placeholder="e.g. Rock climbing"></div>
+      <div class="type-chips" id="ecScope">
+        <div class="tc sel" data-shared="0" onclick="setExScope(false)">Just for me</div>
+        <div class="tc" data-shared="1" onclick="setExScope(true)">Share with family</div>
+      </div>
+      <button class="primary-btn" onclick="saveCustomExType()">Save exercise type</button>
+    </div>
     <div class="field"><label>Duration (min)</label><input id="exMin" class="mono" inputmode="numeric" value="30"></div>
     <div class="field"><label>Note (optional — how it felt, tender spot, bands used)</label><textarea id="exNote" rows="3" placeholder="e.g. bands only, tender spot quiet after, no kickback"></textarea></div>
     <div class="hint">No calorie count — the note is the useful signal for later analysis.</div>
-    <button class="primary-btn" onclick="confirmEx()">Add session</button>
+    <button class="primary-btn" onclick="confirmEx()">Add exercise</button>
     <div class="addFlash" id="exAddFlash"></div>
     <div class="grp-lbl" style="margin-top:10px">Logged for this day</div>
     <div class="entries" id="exSheetList"></div>
@@ -817,7 +825,9 @@ const SEED_FOODS=[
   {id:'f_kai_tom_kem',name:"Kai tom kem (soy-braised eggs)",portion:"100 g",p:10,c:4,f:8,s:4,k:130,fib:0,na:500,m:[]},
   {id:'f_pad_pak_ruam_mit',name:"Pad pak ruam mit (mixed vegetable stir-fry)",portion:"100 g",p:3,c:8,f:6,s:1,k:110,fib:2,na:420,m:[]}
 ];
-const EX_TYPES=['Core / Session B','Legs / Session A','Upper body','Stair cardio','10 km walk','Swim','Other'];
+const EX_TYPES=['Outdoor Walk','Indoor Walk','Outdoor Run','Indoor Run','Outdoor Cycle','Indoor Cycle',
+  'Functional Strength Training','Traditional Strength Training','Core Training','Stairs','Stair Stepper',
+  'Elliptical','Yoga','Pilates','Flexibility','HIIT','Pool Swim','Dance','Basketball','Badminton','Other'];
 const SODIUM_TARGET_MG=2300;
 
 /* ---------- row <-> app shape mapping ---------- */
@@ -828,10 +838,21 @@ function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,
 function mapFoodLogRow(r){return {id:r.id,foodId:r.food_id,name:r.name,multLabel:r.mult_label,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function mapExerciseLogRow(r){return {id:r.id,type:r.type,min:r.minutes,note:r.note||''};}
 function mapBodyRow(r){return {date:r.log_date,weight:r.weight,waist:r.waist};}
+function mapCustomExRow(r){return {id:r.id,profileId:r.profile_id,name:r.name,isShared:!!r.is_shared};}
+async function loadCustomExTypes(){
+  const rows=await sbRead(sb.from('custom_exercise_types').select('*').or(`is_shared.eq.true,profile_id.eq.${active}`));
+  return rows.map(mapCustomExRow);
+}
+function visibleExTypeNames(){
+  const starterLower=new Set(EX_TYPES.map(t=>t.toLowerCase()));
+  const custom=customExTypes.filter(c=>c.isShared||c.profileId===active).map(c=>c.name)
+    .filter(n=>!starterLower.has(n.toLowerCase()));
+  return [...EX_TYPES,...custom];
+}
 
 /* ---------- state ---------- */
-let profiles=[],foods=[],active=null;
-let curFood=null,curMult=1,curExType=EX_TYPES[0],nfMicroSel=[],nfMicroAmt={},editingFoodId=null,editingLogId=null,exportRange='day';
+let profiles=[],foods=[],active=null,customExTypes=[];
+let curFood=null,curMult=1,curExType=EX_TYPES[0],ecShared=false,nfMicroSel=[],nfMicroAmt={},editingFoodId=null,editingLogId=null,exportRange='day';
 const pad2=n=>n<10?'0'+n:''+n;
 const dstr=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 const today=dstr(new Date());
@@ -1232,12 +1253,45 @@ async function saveNewFood(){
 }
 
 /* ---------- exercise ---------- */
-function openEx(){curExType=EX_TYPES[0];
+let visibleExTypesCache=[];
+async function openEx(){
+  curExType=EX_TYPES[0];
   document.getElementById('exSheetTitle').textContent='Log exercise'+sheetDateSuffix();
-  document.getElementById('exTypes').innerHTML=EX_TYPES.map(t=>`<div class="tc ${t===curExType?'sel':''}" onclick="setExType('${t}')">${t}</div>`).join('');
+  customExTypes=await loadCustomExTypes();
+  renderExTypeChips();
+  closeExCustomForm();
   document.getElementById('exMin').value=30;document.getElementById('exNote').value='';
-  renderExSheetList();openSheet('exSheet');}
+  renderExSheetList();openSheet('exSheet');
+}
+function renderExTypeChips(){
+  visibleExTypesCache=visibleExTypeNames();
+  document.getElementById('exTypes').innerHTML=
+    visibleExTypesCache.map((t,i)=>`<div class="tc ${t===curExType?'sel':''}" onclick="setExTypeByIndex(${i})">${t}</div>`).join('')
+    +`<div class="tc" onclick="openExCustomForm()">+ Custom</div>`;
+}
 function setExType(t){curExType=t;document.querySelectorAll('#exTypes .tc').forEach(c=>c.classList.toggle('sel',c.textContent===t));}
+function setExTypeByIndex(i){setExType(visibleExTypesCache[i]);}
+function openExCustomForm(){
+  ecShared=false;
+  document.getElementById('ecName').value='';
+  document.querySelectorAll('#ecScope .tc').forEach(c=>c.classList.toggle('sel',c.dataset.shared==='0'));
+  document.getElementById('exCustomForm').style.display='';
+}
+function closeExCustomForm(){document.getElementById('exCustomForm').style.display='none';}
+function setExScope(shared){
+  ecShared=shared;
+  document.querySelectorAll('#ecScope .tc').forEach(c=>c.classList.toggle('sel',(c.dataset.shared==='1')===shared));
+}
+async function saveCustomExType(){
+  const name=document.getElementById('ecName').value.trim();
+  if(!name){document.getElementById('ecName').focus();return;}
+  const res=await sbWrite(sb.from('custom_exercise_types').insert({profile_id:active,name,is_shared:ecShared}));
+  if(!res.ok)return;
+  customExTypes=await loadCustomExTypes();
+  curExType=name;
+  closeExCustomForm();
+  renderExTypeChips();
+}
 function renderExSheetList(){
   const wrap=document.getElementById('exSheetList');
   wrap.innerHTML=todayEx.length?todayEx.map((e,i)=>`
