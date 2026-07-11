@@ -454,6 +454,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
     <div class="field"><label>Name</label><input id="tgName"></div>
     <div class="grp-lbl">Auto-calculate helpers (optional — only used to fill in the targets below)</div>
     <div class="macro-grid">
+      <div class="field" style="grid-column:1/-1"><label>Weight (kg)</label><input id="tgWeight" class="mono" inputmode="decimal" placeholder="defaults to latest logged weight"></div>
       <div class="field"><label>Sex</label><select id="tgSex"><option value="">—</option><option value="male">Male</option><option value="female">Female</option></select></div>
       <div class="field"><label>Height (cm)</label><input id="tgHeight" class="mono" inputmode="numeric"></div>
       <div class="field" style="grid-column:1/-1"><label>Activity level</label>
@@ -1371,11 +1372,17 @@ async function removeBody(date){
 
 /* ---------- targets ---------- */
 let editingProfileId=null;
-function openTargets(id){
+async function latestWeightFor(profileId){
+  if(profileId===active)return bodyHist.length?+bodyHist[bodyHist.length-1].weight:null;
+  const rows=await sbRead(sb.from('body_metrics').select('*').eq('profile_id',profileId).order('log_date'));
+  return rows.length?+rows[rows.length-1].weight:null;
+}
+async function openTargets(id){
   editingProfileId=id||active;
   const p=profiles.find(x=>x.id===editingProfileId)||prof();
   document.getElementById('tgtSheetTitle').textContent='Edit '+p.name;
   document.getElementById('tgName').value=p.name;
+  document.getElementById('tgWeight').value=(await latestWeightFor(editingProfileId))||'';
   document.getElementById('tgSex').value=p.sex||'';
   document.getElementById('tgHeight').value=p.height||'';
   document.getElementById('tgActivity').value=p.activityMultiplier||1.2;
@@ -1392,20 +1399,13 @@ function calculateTargets(weight,height,age,sex,activityMultiplier){
   const tdee=bmr*activityMultiplier;
   return {k:Math.round(tdee),p:Math.round((tdee*0.30)/4),c:Math.round((tdee*0.40)/4),f:Math.round((tdee*0.30)/9)};
 }
-async function autoCalcTargets(){
-  let weight=null;
-  if(editingProfileId===active){
-    weight=bodyHist.length?+bodyHist[bodyHist.length-1].weight:null;
-  } else {
-    const rows=await sbRead(sb.from('body_metrics').select('*').eq('profile_id',editingProfileId).order('log_date'));
-    weight=rows.length?+rows[rows.length-1].weight:null;
-  }
-  if(!weight){alert('Log a weight reading for this profile first — auto-calculate needs the latest weight.');return;}
+function autoCalcTargets(){
+  const weight=+document.getElementById('tgWeight').value;
   const sex=document.getElementById('tgSex').value;
   const height=+document.getElementById('tgHeight').value;
   const age=+document.getElementById('tgAge').value;
   const activityMultiplier=+document.getElementById('tgActivity').value;
-  if(!sex||!height||!age){alert('Fill in Sex, Height, and Age first, then try again.');return;}
+  if(!weight||!sex||!height||!age){alert('Fill in Weight, Sex, Height, and Age first, then try again.');return;}
   const calc=calculateTargets(weight,height,age,sex,activityMultiplier);
   document.getElementById('tgK').value=calc.k;
   document.getElementById('tgP').value=calc.p;
