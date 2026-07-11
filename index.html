@@ -192,6 +192,8 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .namt-unit{width:30px;font-size:11px;color:var(--muted);font-weight:700}
 .primary-btn{width:100%;padding:15px;border:none;border-radius:13px;background:var(--jade);color:#07100e;font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px}
 .primary-btn:active{transform:scale(.98)}
+.secondary-btn{width:100%;padding:15px;border:1px solid var(--hair);border-radius:13px;background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px}
+.secondary-btn:active{transform:scale(.98)}
 .type-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .tc{padding:10px 14px;border-radius:12px;border:1px solid var(--hair);background:var(--surface);font-size:13px;font-weight:700;cursor:pointer}
 .tc.sel{background:var(--jade);color:#07100e;border-color:var(--jade)}
@@ -450,7 +452,21 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
   <div class="sheet-head"><h3 id="tgtSheetTitle">Edit profile</h3><button class="x" onclick="closeSheet()">✕</button></div>
   <div class="sheet-body">
     <div class="field"><label>Name</label><input id="tgName"></div>
-    <div class="grp-lbl">Reference targets (context for AI — not enforced)</div>
+    <div class="grp-lbl">Auto-calculate helpers (optional — only used to fill in the targets below)</div>
+    <div class="macro-grid">
+      <div class="field"><label>Sex</label><select id="tgSex"><option value="">—</option><option value="male">Male</option><option value="female">Female</option></select></div>
+      <div class="field"><label>Height (cm)</label><input id="tgHeight" class="mono" inputmode="numeric"></div>
+      <div class="field" style="grid-column:1/-1"><label>Activity level</label>
+        <select id="tgActivity">
+          <option value="1.2">Sedentary (1.2)</option>
+          <option value="1.375">Lightly Active (1.375)</option>
+          <option value="1.55">Moderately Active (1.55)</option>
+          <option value="1.725">Very Active (1.725)</option>
+        </select>
+      </div>
+    </div>
+    <button class="secondary-btn" onclick="autoCalcTargets()">Auto-calculate targets from weight</button>
+    <div class="grp-lbl" style="margin-top:14px">Reference targets (context for AI — not enforced)</div>
     <div class="macro-grid">
       <div class="field"><label>Protein g</label><input id="tgP" class="mono" inputmode="numeric"></div>
       <div class="field"><label>Carbs g</label><input id="tgC" class="mono" inputmode="numeric"></div>
@@ -831,8 +847,8 @@ const EX_TYPES=['Outdoor Walk','Indoor Walk','Outdoor Run','Indoor Run','Outdoor
 const SODIUM_TARGET_MG=2300;
 
 /* ---------- row <-> app shape mapping ---------- */
-function mapProfileRow(r){return {id:r.id,name:r.name,t:{p:+r.protein_target||0,c:+r.carbs_target||0,f:+r.fat_target||0,s:+r.sugar_target||0,k:+r.kcal_target||0},age:r.age==null?'':r.age,note:r.note||''};}
-function profileToRow(p){return {id:p.id,name:p.name,protein_target:p.t.p,carbs_target:p.t.c,fat_target:p.t.f,sugar_target:p.t.s,kcal_target:p.t.k,age:(p.age===''||p.age==null)?null:p.age,note:p.note||''};}
+function mapProfileRow(r){return {id:r.id,name:r.name,t:{p:+r.protein_target||0,c:+r.carbs_target||0,f:+r.fat_target||0,s:+r.sugar_target||0,k:+r.kcal_target||0},age:r.age==null?'':r.age,note:r.note||'',sex:r.sex||'',height:r.height==null?'':r.height,activityMultiplier:r.activity_multiplier==null?1.2:+r.activity_multiplier};}
+function profileToRow(p){return {id:p.id,name:p.name,protein_target:p.t.p,carbs_target:p.t.c,fat_target:p.t.f,sugar_target:p.t.s,kcal_target:p.t.k,age:(p.age===''||p.age==null)?null:p.age,note:p.note||'',sex:p.sex||null,height:(p.height===''||p.height==null)?null:p.height,activity_multiplier:p.activityMultiplier==null?1.2:p.activityMultiplier};}
 function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,na:r.sodium==null?null:+r.sodium,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,sodium:f.na==null?null:f.na,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};}
 function mapFoodLogRow(r){return {id:r.id,foodId:r.food_id,name:r.name,multLabel:r.mult_label,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
@@ -1360,21 +1376,55 @@ function openTargets(id){
   const p=profiles.find(x=>x.id===editingProfileId)||prof();
   document.getElementById('tgtSheetTitle').textContent='Edit '+p.name;
   document.getElementById('tgName').value=p.name;
+  document.getElementById('tgSex').value=p.sex||'';
+  document.getElementById('tgHeight').value=p.height||'';
+  document.getElementById('tgActivity').value=p.activityMultiplier||1.2;
   document.getElementById('tgP').value=p.t.p;document.getElementById('tgC').value=p.t.c;
   document.getElementById('tgF').value=p.t.f;document.getElementById('tgS').value=p.t.s;
   document.getElementById('tgK').value=p.t.k;document.getElementById('tgAge').value=p.age||'';
   document.getElementById('tgNote').value=p.note||'';
   openSheet('tgtSheet');
 }
+function calculateTargets(weight,height,age,sex,activityMultiplier){
+  const bmr=sex==='female'
+    ?(10*weight)+(6.25*height)-(5*age)-161
+    :(10*weight)+(6.25*height)-(5*age)+5;
+  const tdee=bmr*activityMultiplier;
+  return {k:Math.round(tdee),p:Math.round((tdee*0.30)/4),c:Math.round((tdee*0.40)/4),f:Math.round((tdee*0.30)/9)};
+}
+async function autoCalcTargets(){
+  let weight=null;
+  if(editingProfileId===active){
+    weight=bodyHist.length?+bodyHist[bodyHist.length-1].weight:null;
+  } else {
+    const rows=await sbRead(sb.from('body_metrics').select('*').eq('profile_id',editingProfileId).order('log_date'));
+    weight=rows.length?+rows[rows.length-1].weight:null;
+  }
+  if(!weight){alert('Log a weight reading for this profile first — auto-calculate needs the latest weight.');return;}
+  const sex=document.getElementById('tgSex').value;
+  const height=+document.getElementById('tgHeight').value;
+  const age=+document.getElementById('tgAge').value;
+  const activityMultiplier=+document.getElementById('tgActivity').value;
+  if(!sex||!height||!age){alert('Fill in Sex, Height, and Age first, then try again.');return;}
+  const calc=calculateTargets(weight,height,age,sex,activityMultiplier);
+  document.getElementById('tgK').value=calc.k;
+  document.getElementById('tgP').value=calc.p;
+  document.getElementById('tgC').value=calc.c;
+  document.getElementById('tgF').value=calc.f;
+}
 async function saveTargets(){
   const p=profiles.find(x=>x.id===editingProfileId)||prof();
   const name=document.getElementById('tgName').value.trim()||p.name;
+  const sex=document.getElementById('tgSex').value||'';
+  const heightVal=document.getElementById('tgHeight').value.trim();
+  const height=heightVal?(+heightVal||''):'';
+  const activityMultiplier=+document.getElementById('tgActivity').value||1.2;
   const t={p:+document.getElementById('tgP').value||0,c:+document.getElementById('tgC').value||0,
     f:+document.getElementById('tgF').value||0,s:+document.getElementById('tgS').value||0,k:+document.getElementById('tgK').value||0};
   const ageVal=document.getElementById('tgAge').value.trim();
   const age=ageVal?(+ageVal||''):'';
   const note=document.getElementById('tgNote').value.trim();
-  const res=await sbWrite(sb.from('profiles').update(profileToRow({...p,name,t,age,note})).eq('id',editingProfileId));
+  const res=await sbWrite(sb.from('profiles').update(profileToRow({...p,name,t,age,note,sex,height,activityMultiplier})).eq('id',editingProfileId));
   if(!res.ok)return;
   profiles=await loadProfiles();
   closeSheet();renderProfiles();renderAll();
