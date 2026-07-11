@@ -454,7 +454,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
     <div class="field"><label>Name</label><input id="tgName"></div>
     <div class="grp-lbl">Auto-calculate helpers (optional — only used to fill in the targets below)</div>
     <div class="macro-grid">
-      <div class="field" style="grid-column:1/-1"><label>Weight (kg)</label><input id="tgWeight" class="mono" inputmode="decimal" placeholder="defaults to latest logged weight"></div>
+      <div class="field" style="grid-column:1/-1"><label>Weight (kg)</label><input id="tgWeight" class="mono" inputmode="decimal" placeholder="e.g. 70"></div>
       <div class="field"><label>Sex</label><select id="tgSex"><option value="">—</option><option value="male">Male</option><option value="female">Female</option></select></div>
       <div class="field"><label>Height (cm)</label><input id="tgHeight" class="mono" inputmode="numeric"></div>
       <div class="field" style="grid-column:1/-1"><label>Activity level</label>
@@ -1400,12 +1400,19 @@ function calculateTargets(weight,height,age,sex,activityMultiplier){
   return {k:Math.round(tdee),p:Math.round((tdee*0.30)/4),c:Math.round((tdee*0.40)/4),f:Math.round((tdee*0.30)/9)};
 }
 function autoCalcTargets(){
-  const weight=+document.getElementById('tgWeight').value;
+  const weightVal=document.getElementById('tgWeight').value.trim();
   const sex=document.getElementById('tgSex').value;
-  const height=+document.getElementById('tgHeight').value;
-  const age=+document.getElementById('tgAge').value;
+  const heightVal=document.getElementById('tgHeight').value.trim();
+  const ageVal=document.getElementById('tgAge').value.trim();
+  const missing=[];
+  if(!weightVal)missing.push('Weight');
+  if(!sex)missing.push('Sex');
+  if(!heightVal)missing.push('Height');
+  if(!ageVal)missing.push('Age');
+  if(missing.length){alert('Fill in '+missing.join(', ')+' first, then try again.');return;}
+  const weight=+weightVal,height=+heightVal,age=+ageVal;
+  if(isNaN(weight)||isNaN(height)||isNaN(age)){alert('Weight, Height, and Age need to be plain numbers (e.g. 70, not 70,5 or 70kg).');return;}
   const activityMultiplier=+document.getElementById('tgActivity').value;
-  if(!weight||!sex||!height||!age){alert('Fill in Weight, Sex, Height, and Age first, then try again.');return;}
   const calc=calculateTargets(weight,height,age,sex,activityMultiplier);
   document.getElementById('tgK').value=calc.k;
   document.getElementById('tgP').value=calc.p;
