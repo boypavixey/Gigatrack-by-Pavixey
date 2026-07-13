@@ -155,6 +155,9 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .fitem .fedit{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
 .fitem .fedit:active{background:var(--paper)}
 .addnew{width:100%;padding:13px;border:1px dashed var(--hair);border-radius:13px;background:transparent;font-family:inherit;font-size:14px;font-weight:700;color:var(--jade);cursor:pointer;margin-top:12px}
+.addnew-row{display:flex;gap:8px;margin-top:12px}
+.addnew-row .addnew{margin-top:0}
+.ai-tag{display:inline-block;font-size:9px;font-weight:800;color:var(--muted);border:1px solid var(--hair);border-radius:5px;padding:1px 4px;margin-left:6px;vertical-align:middle;letter-spacing:.03em}
 
 .pick-food{font-size:19px;font-weight:800;margin:2px 0 2px}
 .pick-portion{font-size:13px;color:var(--muted);font-weight:600;margin-bottom:16px}
@@ -352,7 +355,10 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
       <div id="recentsWrap"></div>
       <div class="grp-lbl">Your library</div>
       <div class="foodlist" id="foodList"></div>
-      <button class="addnew" onclick="openNewFood()">+ New food</button>
+      <div class="addnew-row">
+        <button class="addnew" onclick="openNewFood()">+ New food</button>
+        <button class="addnew" onclick="openPasteJson()">📋 Paste AI JSON</button>
+      </div>
     </div>
     <div id="foodPick" style="display:none">
       <div class="pick-food" id="pickName"></div>
@@ -387,6 +393,22 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
     </div>
   </div>
   <div class="sheet-foot"><button class="done-btn" onclick="closeSheet()">Done logging</button></div>
+</div>
+
+<!-- PASTE AI JSON SHEET -->
+<div class="sheet" id="pasteJsonSheet">
+  <div class="grab"></div>
+  <div class="sheet-head"><h3>Paste AI JSON</h3><button class="x" onclick="closeSheet()">✕</button></div>
+  <div class="sheet-body">
+    <div class="hint">Paste a single food JSON object, or an array of food objects, generated in a separate AI chat. Preview before anything is saved.</div>
+    <div class="field"><textarea id="pasteJsonInput" rows="10" placeholder='{"name":"...","portion":"100 g","p":0,"c":0,"f":0,"s":0,"fib":0,"na":0,"k":0,"m":[],"mAmt":{}}'></textarea></div>
+    <button class="secondary-btn" onclick="previewPasteJson()">Preview</button>
+    <div class="hint" id="pasteJsonError" style="display:none;color:var(--danger)"></div>
+    <div id="pasteJsonPreviewWrap"></div>
+    <button class="primary-btn" id="pasteJsonSaveBtn" style="display:none" onclick="savePastedFoods()">Save to library</button>
+    <div class="addFlash" id="pasteJsonFlash"></div>
+  </div>
+  <div class="sheet-foot"><button class="done-btn" onclick="closeSheet()">Close</button></div>
 </div>
 
 <!-- EXERCISE SHEET -->
@@ -851,8 +873,8 @@ const SODIUM_TARGET_MG=2300;
 /* ---------- row <-> app shape mapping ---------- */
 function mapProfileRow(r){return {id:r.id,name:r.name,t:{p:+r.protein_target||0,c:+r.carbs_target||0,f:+r.fat_target||0,s:+r.sugar_target||0,k:+r.kcal_target||0},age:r.age==null?'':r.age,note:r.note||'',sex:r.sex||'',height:r.height==null?'':r.height,activityMultiplier:r.activity_multiplier==null?1.2:+r.activity_multiplier};}
 function profileToRow(p){return {id:p.id,name:p.name,protein_target:p.t.p,carbs_target:p.t.c,fat_target:p.t.f,sugar_target:p.t.s,kcal_target:p.t.k,age:(p.age===''||p.age==null)?null:p.age,note:p.note||'',sex:p.sex||null,height:(p.height===''||p.height==null)?null:p.height,activity_multiplier:p.activityMultiplier==null?1.2:p.activityMultiplier};}
-function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,na:r.sodium==null?null:+r.sodium,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
-function foodToRow(f){return {id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,sodium:f.na==null?null:f.na,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};}
+function mapFoodRow(r){return {id:r.id,name:r.name,portion:r.portion,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,na:r.sodium==null?null:+r.sodium,m:r.micro_tags||[],mAmt:r.micro_amounts||{},source:r.source||'manual'};}
+function foodToRow(f){const row={id:f.id,name:f.name,portion:f.portion,protein:f.p,carbs:f.c,fat:f.f,sugar:f.s,kcal:f.k,fibre:f.fib||0,sodium:f.na==null?null:f.na,micro_tags:f.m||[],micro_amounts:f.mAmt||{}};if(f.source!==undefined)row.source=f.source;return row;}
 function mapFoodLogRow(r){return {id:r.id,foodId:r.food_id,name:r.name,multLabel:r.mult_label,p:+r.protein||0,c:+r.carbs||0,f:+r.fat||0,s:+r.sugar||0,k:+r.kcal||0,fib:+r.fibre||0,m:r.micro_tags||[],mAmt:r.micro_amounts||{}};}
 function mapExerciseLogRow(r){return {id:r.id,type:r.type,min:r.minutes,note:r.note||''};}
 function mapBodyRow(r){return {date:r.log_date,weight:r.weight,waist:r.waist};}
@@ -870,7 +892,7 @@ function visibleExTypeNames(){
 
 /* ---------- state ---------- */
 let profiles=[],foods=[],active=null,customExTypes=[];
-let curFood=null,curMult=1,curExType=EX_TYPES[0],ecShared=false,nfMicroSel=[],nfMicroAmt={},editingFoodId=null,editingLogId=null,exportRange='day';
+let curFood=null,curMult=1,curExType=EX_TYPES[0],ecShared=false,nfMicroSel=[],nfMicroAmt={},editingFoodId=null,editingLogId=null,exportRange='day',pasteParsedFoods=[];
 const pad2=n=>n<10?'0'+n:''+n;
 const dstr=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
 const today=dstr(new Date());
@@ -1099,7 +1121,7 @@ function renderFoodList(){
   const q=(document.getElementById('foodSearch').value||'').toLowerCase();
   const list=foods.filter(f=>f.name.toLowerCase().includes(q));
   document.getElementById('foodList').innerHTML=list.map(f=>`
-    <div class="fitem" onclick="pickFood('${f.id}')"><div class="fn"><b>${f.name}</b>
+    <div class="fitem" onclick="pickFood('${f.id}')"><div class="fn"><b>${f.name}${f.source==='ai_estimated'?' <span class="ai-tag">AI</span>':''}</b>
       <span>${f.portion} · ${r0(f.c)}C ${r0(f.f)}F ${r0(f.s)}S · ${r0(f.k)}kcal${f.m&&f.m.length?' · '+f.m.length+' micro':''}</span></div>
       <div class="fp mono">${r0(f.p)}<small> P</small></div>
       <button class="fedit" onclick="event.stopPropagation();openEditFood('${f.id}')">✎</button></div>`).join('')
@@ -1260,7 +1282,7 @@ async function saveNewFood(){
     flashAdded('foodAddFlash',data.name+' updated ✓');
   } else {
     const id='u_'+Date.now();
-    const res=await sbWrite(sb.from('foods').insert(foodToRow({id,...data})));
+    const res=await insertFoodRows([foodToRow({id,...data})]);
     if(!res.ok)return;
     foods=await loadFoods();
     document.getElementById('nfName').value='';document.getElementById('nfPortion').value='';
@@ -1268,6 +1290,94 @@ async function saveNewFood(){
     document.getElementById('nfNa').value='';
     pickFood(id);
   }
+}
+async function insertFoodRows(rows){return await sbWrite(sb.from('foods').insert(rows));}
+
+/* ---------- paste AI JSON ---------- */
+function openPasteJson(){
+  pasteParsedFoods=[];
+  document.getElementById('pasteJsonInput').value='';
+  const errEl=document.getElementById('pasteJsonError');errEl.style.display='none';errEl.textContent='';
+  document.getElementById('pasteJsonPreviewWrap').innerHTML='';
+  document.getElementById('pasteJsonSaveBtn').style.display='none';
+  openSheet('pasteJsonSheet');
+}
+function findCloseFoodMatches(name){
+  const q=name.trim().toLowerCase();
+  if(!q)return [];
+  return foods.filter(f=>{const fn=f.name.toLowerCase();return fn.includes(q)||q.includes(fn);}).map(f=>f.name);
+}
+function normalizePastedFood(o){
+  if(!o||typeof o!=='object')throw new Error('Each food must be a JSON object');
+  const name=(o.name==null?'':String(o.name)).trim();
+  if(!name)throw new Error('Each food needs a non-empty "name"');
+  const microIds=MICROS.map(x=>x.id);
+  const m=Array.isArray(o.m)?o.m.filter(id=>microIds.includes(id)):[];
+  const mAmt={};m.forEach(id=>{const v=o.mAmt&&+o.mAmt[id];if(v)mAmt[id]=v;});
+  const naRaw=o.na;
+  return {
+    name,
+    portion:(o.portion==null?'':String(o.portion)).trim()||'1 serving',
+    p:+o.p||0,c:+o.c||0,f:+o.f||0,s:+o.s||0,k:+o.k||0,fib:+o.fib||0,
+    na:(naRaw===undefined||naRaw===null||naRaw==='')?null:+naRaw,
+    m,mAmt,
+    source:'ai_estimated'
+  };
+}
+function previewPasteJson(){
+  const raw=document.getElementById('pasteJsonInput').value.trim();
+  const errEl=document.getElementById('pasteJsonError');
+  errEl.style.display='none';errEl.textContent='';
+  document.getElementById('pasteJsonSaveBtn').style.display='none';
+  pasteParsedFoods=[];
+  document.getElementById('pasteJsonPreviewWrap').innerHTML='';
+  if(!raw){errEl.textContent='Paste some JSON first.';errEl.style.display='';return;}
+  let val;
+  try{val=JSON.parse(raw);}catch(e){errEl.textContent='Invalid JSON: '+e.message;errEl.style.display='';return;}
+  const arr=Array.isArray(val)?val:[val];
+  let parsed;
+  try{parsed=arr.map(normalizePastedFood);}catch(e){errEl.textContent=e.message;errEl.style.display='';return;}
+  pasteParsedFoods=parsed;
+  renderPasteJsonPreview();
+  document.getElementById('pasteJsonSaveBtn').style.display=parsed.length?'':'none';
+}
+function renderPasteJsonPreview(){
+  const wrap=document.getElementById('pasteJsonPreviewWrap');
+  wrap.innerHTML=pasteParsedFoods.map(f=>{
+    const dupes=findCloseFoodMatches(f.name);
+    const microLine=f.m.length?f.m.map(id=>{
+      const mic=MICROS.find(x=>x.id===id);const amt=f.mAmt[id];
+      return amt?`${mic.label} ${r1(amt)}${mic.unit}`:mLabel(id);
+    }).join(', '):'';
+    return `<div class="preview">
+      <div class="prow p"><span><b>${f.name}</b></span><span>${f.portion}</span></div>
+      <div class="prow"><span>Protein</span><b>${r1(f.p)} g</b></div>
+      <div class="prow"><span>Carbs</span><b>${r1(f.c)} g</b></div>
+      <div class="prow"><span>Fat</span><b>${r1(f.f)} g</b></div>
+      <div class="prow"><span>Added sugar</span><b>${r1(f.s)} g</b></div>
+      <div class="prow"><span>Calories</span><b>${r0(f.k)} kcal</b></div>
+      <div class="prow"><span>Sodium</span><b>${f.na==null?'—':r0(f.na)+' mg'}</b></div>
+      ${microLine?`<div class="pmicro">Micro sources: ${microLine}</div>`:''}
+      ${dupes.length?`<div class="pmicro" style="color:var(--ochre)">⚠ Possible existing match: ${dupes.join(', ')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+async function savePastedFoods(){
+  if(!pasteParsedFoods.length)return;
+  const btn=document.getElementById('pasteJsonSaveBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const rows=pasteParsedFoods.map((d,i)=>foodToRow({id:'u_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6),...d}));
+  const res=await insertFoodRows(rows);
+  btn.disabled=false;btn.textContent='Save to library';
+  if(!res.ok)return;
+  foods=await loadFoods();
+  const n=pasteParsedFoods.length;
+  pasteParsedFoods=[];
+  document.getElementById('pasteJsonInput').value='';
+  document.getElementById('pasteJsonPreviewWrap').innerHTML='';
+  btn.style.display='none';
+  renderFoodList();renderRecents();
+  flashAdded('pasteJsonFlash',n+' food'+(n===1?'':'s')+' saved to library ✓');
 }
 
 /* ---------- exercise ---------- */
