@@ -154,9 +154,11 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .fitem .fp small{font-size:10px;color:var(--muted)}
 .fitem .fedit{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
 .fitem .fedit:active{background:var(--paper)}
+.fitem .fdel{flex:0 0 auto;width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--danger);font-size:15px;cursor:pointer;line-height:1}
+.fitem .fdel:active{background:var(--paper)}
 .addnew{width:100%;padding:13px;border:1px dashed var(--hair);border-radius:13px;background:transparent;font-family:inherit;font-size:14px;font-weight:700;color:var(--jade);cursor:pointer;margin-top:12px}
 .addnew-row{display:flex;gap:8px;margin-top:12px}
-.addnew-row .addnew{margin-top:0}
+.addnew-row .addnew{margin-top:0;flex:1;width:auto}
 .ai-tag{display:inline-block;font-size:9px;font-weight:800;color:var(--muted);border:1px solid var(--hair);border-radius:5px;padding:1px 4px;margin-left:6px;vertical-align:middle;letter-spacing:.03em}
 
 .pick-food{font-size:19px;font-weight:800;margin:2px 0 2px}
@@ -353,12 +355,12 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
       <input class="search" id="foodSearch" placeholder="Search your foods…" oninput="renderFoodList()">
       <div class="addFlash" id="foodAddFlash"></div>
       <div id="recentsWrap"></div>
-      <div class="grp-lbl">Your library</div>
-      <div class="foodlist" id="foodList"></div>
       <div class="addnew-row">
         <button class="addnew" onclick="openNewFood()">+ New food</button>
         <button class="addnew" onclick="openPasteJson()">📋 Paste AI JSON</button>
       </div>
+      <div class="grp-lbl">Your library</div>
+      <div class="foodlist" id="foodList"></div>
     </div>
     <div id="foodPick" style="display:none">
       <div class="pick-food" id="pickName"></div>
@@ -1124,8 +1126,18 @@ function renderFoodList(){
     <div class="fitem" onclick="pickFood('${f.id}')"><div class="fn"><b>${f.name}${f.source==='ai_estimated'?' <span class="ai-tag">AI</span>':''}</b>
       <span>${f.portion} · ${r0(f.c)}C ${r0(f.f)}F ${r0(f.s)}S · ${r0(f.k)}kcal${f.m&&f.m.length?' · '+f.m.length+' micro':''}</span></div>
       <div class="fp mono">${r0(f.p)}<small> P</small></div>
-      <button class="fedit" onclick="event.stopPropagation();openEditFood('${f.id}')">✎</button></div>`).join('')
+      <button class="fedit" onclick="event.stopPropagation();openEditFood('${f.id}')">✎</button>
+      <button class="fdel" onclick="event.stopPropagation();deleteFood('${f.id}')">✕</button></div>`).join('')
     ||`<div class="empty">No match. Add it as a new food below.</div>`;
+}
+async function deleteFood(id){
+  const f=foods.find(x=>x.id===id);
+  if(!f)return;
+  if(!confirm(`Remove "${f.name}" from your shared food library?\n\nPast logged entries for it stay in history as-is — this only removes it from the picker/search going forward.`))return;
+  const res=await sbWrite(sb.from('foods').delete().eq('id',id));
+  if(!res.ok)return;
+  foods=await loadFoods();
+  renderFoodList();renderRecents();
 }
 function pickFood(id){
   curFood=foods.find(f=>f.id===id);curMult=1;
@@ -1824,8 +1836,29 @@ function doDownload(){
 }
 
 /* ---------- sheets ---------- */
-function openSheet(id){document.getElementById('scrim').classList.add('on');document.getElementById(id).classList.add('on');}
-function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));editingLogId=null;}
+let bodyScrollLocked=false,scrollLockY=0;
+function lockBodyScroll(){
+  if(bodyScrollLocked)return;
+  bodyScrollLocked=true;
+  scrollLockY=window.scrollY||window.pageYOffset||0;
+  document.body.style.position='fixed';
+  document.body.style.top='-'+scrollLockY+'px';
+  document.body.style.left='0';
+  document.body.style.right='0';
+  document.body.style.width='100%';
+}
+function unlockBodyScroll(){
+  if(!bodyScrollLocked)return;
+  bodyScrollLocked=false;
+  document.body.style.position='';
+  document.body.style.top='';
+  document.body.style.left='';
+  document.body.style.right='';
+  document.body.style.width='';
+  window.scrollTo(0,scrollLockY);
+}
+function openSheet(id){document.getElementById('scrim').classList.add('on');document.getElementById(id).classList.add('on');lockBodyScroll();}
+function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));editingLogId=null;unlockBodyScroll();}
 
 /* ---------- background refresh ---------- */
 const REFRESH_MS=25000;
