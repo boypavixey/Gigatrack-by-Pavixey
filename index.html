@@ -83,6 +83,8 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 .util{display:flex;gap:8px;margin:14px 0 4px}
 .util button{flex:1;padding:11px;border:1px solid rgba(255,255,255,0.04);border-radius:12px;background:transparent;font-family:inherit;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer}
 .util button:active{background:var(--paper)}
+.offline-badge{display:inline-block;min-width:16px;padding:1px 5px;margin-left:6px;border-radius:999px;background:var(--ochre);color:#07100e;font-size:10px;font-weight:800;line-height:1.4}
+.offline-divider{border-top:1px dashed rgba(255,255,255,0.08);margin:20px 0 0}
 
 .sec-head{display:flex;justify-content:space-between;align-items:center;margin:22px 4px 10px}
 .sec-head h2{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:0;color:var(--muted)}
@@ -327,6 +329,7 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
 
   <div class="util">
     <button onclick="openWeekly()">📊 This week</button>
+    <button onclick="openOfflineNotes()">📴 Offline<span class="offline-badge" id="offlineBadge" style="display:none"></span></button>
   </div>
 
   <div class="sec-head"><h2 id="foodHead">Food today</h2><span class="sec-actions"><button class="clear-all" id="clearFoodBtn" onclick="clearAllFood()" style="display:none">Clear all</button><span class="tot" id="foodCount">0 items</span></span></div>
@@ -524,6 +527,26 @@ body{font-family:'Manrope',system-ui,sans-serif;background:linear-gradient(180de
   </div>
 </div>
 
+<!-- OFFLINE NOTES SHEET -->
+<div class="sheet" id="offlineSheet">
+  <div class="grab"></div>
+  <div class="sheet-head"><h3>Offline notes</h3><button class="x" onclick="closeSheet()">✕</button></div>
+  <div class="sheet-body">
+    <div class="grp-lbl" style="margin-top:0">Pending logs</div>
+    <div class="hint">Saved locally when a log couldn't reach the server. Tap one to finish logging it for real.</div>
+    <div class="entries" id="offlineNotesList"></div>
+
+    <div class="offline-divider"></div>
+    <div class="grp-lbl">Note while offline</div>
+    <div class="hint">Plain scratchpad for foods eaten offline that aren't in your library yet — bring this to the AI chat later, then log them for the right day with the date picker. Nothing here is saved to the server.</div>
+    <div class="field"><textarea id="offlineFoodNote" rows="6" placeholder="14 Jul: ..." oninput="onOfflineFoodNoteInput()"></textarea></div>
+    <div class="export-actions">
+      <button class="copy-btn" id="offlineNoteCopyBtn" onclick="copyOfflineFoodNote()">Copy</button>
+      <button class="dl-btn" onclick="clearOfflineFoodNote()">Clear</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ---------- storage ---------- */
 const SUPABASE_URL='https://ilhtfpelsoyxriqdapsg.supabase.co';
@@ -534,6 +557,31 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 const DEVICE_NS='gigatrack:device:';
 function localGet(k){try{const r=localStorage.getItem(DEVICE_NS+k);return r?JSON.parse(r):null;}catch(e){return null;}}
 function localSet(k,v){try{localStorage.setItem(DEVICE_NS+k,JSON.stringify(v));}catch(e){console.error('Gigatrack: failed to persist device setting',k,e);}}
+
+/* ---------- offline notes (client-side only, never synced) ---------- */
+const OFFLINE_NOTES_KEY='gt_offline_notes';
+const OFFLINE_FOOD_NOTE_KEY='gt_offline_food_note';
+function loadOfflineNotes(){try{const r=localStorage.getItem(OFFLINE_NOTES_KEY);return r?JSON.parse(r):[];}catch(e){return [];}}
+function saveOfflineNotesRaw(arr){try{localStorage.setItem(OFFLINE_NOTES_KEY,JSON.stringify(arr));}catch(e){console.error('Gigatrack: failed to persist offline notes',e);}}
+function addOfflineNote(note){
+  const notes=loadOfflineNotes();
+  notes.push({id:'note_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),created_at:new Date().toISOString(),...note});
+  saveOfflineNotesRaw(notes);
+  renderOfflineBadge();
+}
+function removeOfflineNote(id){
+  saveOfflineNotesRaw(loadOfflineNotes().filter(n=>n.id!==id));
+  renderOfflineBadge();
+}
+function renderOfflineBadge(){
+  const el=document.getElementById('offlineBadge');
+  if(!el)return;
+  const n=loadOfflineNotes().filter(x=>x.profile_id===active).length;
+  el.textContent=n;
+  el.style.display=n?'':'none';
+}
+function loadOfflineFoodNote(){try{return localStorage.getItem(OFFLINE_FOOD_NOTE_KEY)||'';}catch(e){return '';}}
+function saveOfflineFoodNoteRaw(v){try{localStorage.setItem(OFFLINE_FOOD_NOTE_KEY,v);}catch(e){console.error('Gigatrack: failed to persist offline food note',e);}}
 
 async function sbRead(query){
   try{
@@ -557,6 +605,43 @@ async function sbWrite(query){
     console.error('Gigatrack: write failed',e);
     if(!quietMode)alert('Could not save — check your internet connection and try again.');
     return {ok:false,data:null};
+  }
+}
+/* Distinguishes a real connectivity failure (fetch itself couldn't run) from a
+   server/validation error (a resolved Postgrest {error} response, e.g. a
+   constraint violation) — only the former should ever be offered as an offline note. */
+function isNetworkError(err){
+  if(!err)return false;
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return true;
+  if(err instanceof TypeError)return true;
+  return /failed to fetch|networkerror|network request failed|load failed|internet connection appears to be offline/i.test(String(err.message||err||''));
+}
+let resumingNoteId=null;
+async function offerOfflineNote(offNote,err,resuming){
+  console.error('Gigatrack: network write failed',err);
+  if(resuming)return {ok:false,data:null,offline:true,savedNote:false};
+  const accept=confirm('No connection — save as a note to finish later?');
+  if(!accept)return {ok:false,data:null,offline:true,savedNote:false};
+  addOfflineNote(offNote);
+  return {ok:false,data:null,offline:true,savedNote:true};
+}
+async function sbWriteLoggable(query,offNote,opts){
+  opts=opts||{};
+  try{
+    const {data,error}=await query;
+    if(error){
+      if(isNetworkError(error))return await offerOfflineNote(offNote,error,opts.resuming);
+      console.error('Gigatrack: write error',error);
+      alert('Could not save — check your internet connection and try again.\n\n'+(error.message||''));
+      return {ok:false,data:null,offline:false};
+    }
+    flashSave();
+    return {ok:true,data,offline:false};
+  }catch(e){
+    if(isNetworkError(e))return await offerOfflineNote(offNote,e,opts.resuming);
+    console.error('Gigatrack: write failed',e);
+    alert('Could not save — check your internet connection and try again.');
+    return {ok:false,data:null,offline:false};
   }
 }
 let saveT;function flashSave(){const d=document.getElementById('saveDot');d.classList.add('on');clearTimeout(saveT);saveT=setTimeout(()=>d.classList.remove('on'),1200);}
@@ -1050,6 +1135,7 @@ async function shiftDay(n){
 async function goToday(){viewDate=today;await loadDay();renderAll();}
 function renderAll(){
   renderDateBar();
+  renderOfflineBadge();
   const t=prof().t,tot=sum(todayLog);
   document.getElementById('pNow').textContent=r0(tot.p);
   document.getElementById('pTgt').textContent=t.p;
@@ -1194,10 +1280,23 @@ async function confirmFood(){
   const payload={profile_id:active,log_date:viewDate,food_id:f.id,name:f.name,mult_label:scalePortion(f.portion,m),
     protein:f.p*m,carbs:f.c*m,fat:f.f*m,sugar:f.s*m,kcal:f.k*m,fibre:(f.fib||0)*m,micro_tags:f.m||[],micro_amounts:mAmt};
   const wasEdit=!!editingLogId;
+  const offNote={type:'food',profile_id:active,log_date:viewDate,payload:{name:f.name,portion:f.portion,mult:m},
+    summary:f.name+' × '+m+' (≈'+r0(f.k*m)+' kcal)'};
   const res=wasEdit
-    ? await sbWrite(sb.from('food_logs').update(payload).eq('id',editingLogId))
-    : await sbWrite(sb.from('food_logs').insert(payload));
+    ? await sbWriteLoggable(sb.from('food_logs').update(payload).eq('id',editingLogId),offNote,{resuming:!!resumingNoteId})
+    : await sbWriteLoggable(sb.from('food_logs').insert(payload),offNote,{resuming:!!resumingNoteId});
+  if(res.offline){
+    if(res.savedNote){
+      editingLogId=null;
+      showBrowse();renderFoodList();renderRecents();
+      document.getElementById('addFoodBtn').textContent=addBtnLabel();
+      document.getElementById('foodSheetTitle').textContent='Log food'+sheetDateSuffix();
+      flashAdded('foodAddFlash','Saved as note — '+loadOfflineNotes().filter(n=>n.profile_id===active).length+' pending');
+    }
+    return;
+  }
   if(!res.ok)return;
+  if(resumingNoteId){removeOfflineNote(resumingNoteId);resumingNoteId=null;}
   editingLogId=null;
   await loadDay();renderAll();
   showBrowse();renderFoodList();renderRecents();
@@ -1442,9 +1541,20 @@ function renderExSheetList(){
 }
 async function confirmEx(){
   const type=curExType,min=+document.getElementById('exMin').value||0;
-  const note=document.getElementById('exNote').value.trim();
-  const res=await sbWrite(sb.from('exercise_logs').insert({profile_id:active,log_date:viewDate,type,minutes:min,note}));
+  const noteText=document.getElementById('exNote').value.trim();
+  const offNote={type:'exercise',profile_id:active,log_date:viewDate,payload:{type,min,note:noteText},
+    summary:type+' · '+min+' min'};
+  const res=await sbWriteLoggable(sb.from('exercise_logs').insert({profile_id:active,log_date:viewDate,type,minutes:min,note:noteText}),offNote,{resuming:!!resumingNoteId});
+  if(res.offline){
+    if(res.savedNote){
+      document.getElementById('exNote').value='';
+      renderExSheetList();
+      flashAdded('exAddFlash','Saved as note — '+loadOfflineNotes().filter(n=>n.profile_id===active).length+' pending');
+    }
+    return;
+  }
   if(!res.ok)return;
+  if(resumingNoteId){removeOfflineNote(resumingNoteId);resumingNoteId=null;}
   await loadDay();renderAll();
   document.getElementById('exNote').value='';
   renderExSheetList();
@@ -1481,8 +1591,15 @@ async function saveBody(){
   const payload={profile_id:active,log_date:viewDate};
   if(w)payload.weight=+w;
   if(wa)payload.waist=+wa;
-  const res=await sbWrite(sb.from('body_metrics').upsert(payload,{onConflict:'profile_id,log_date'}));
+  const offNote={type:'weight',profile_id:active,log_date:viewDate,payload:{weight:w||null,waist:wa||null},
+    summary:(w?w+' kg':'')+(w&&wa?' · ':'')+(wa?wa+' cm':'')};
+  const res=await sbWriteLoggable(sb.from('body_metrics').upsert(payload,{onConflict:'profile_id,log_date'}),offNote,{resuming:!!resumingNoteId});
+  if(res.offline){
+    if(res.savedNote){alert('Saved as note — '+loadOfflineNotes().filter(n=>n.profile_id===active).length+' pending.');closeSheet();}
+    return;
+  }
   if(!res.ok)return;
+  if(resumingNoteId)removeOfflineNote(resumingNoteId);
   await loadDay();closeSheet();renderAll();
 }
 async function removeBody(date){
@@ -1491,6 +1608,76 @@ async function removeBody(date){
   await loadDay();
   if(date===viewDate){document.getElementById('bdW').value='';document.getElementById('bdWa').value='';}
   renderBodyHistList();renderAll();
+}
+
+/* ---------- offline notes sheet ---------- */
+const OFFLINE_TYPE_ICON={food:'🍽',exercise:'🏃',weight:'⚖️'};
+let offlineNoteWasEmpty=true,offlineNoteSaveT=null;
+function openOfflineNotes(){
+  renderOfflineNotesList();
+  const val=loadOfflineFoodNote();
+  const ta=document.getElementById('offlineFoodNote');
+  ta.value=val;
+  offlineNoteWasEmpty=(val.length===0);
+  openSheet('offlineSheet');
+}
+function renderOfflineNotesList(){
+  const notes=loadOfflineNotes().filter(n=>n.profile_id===active);
+  const wrap=document.getElementById('offlineNotesList');
+  wrap.innerHTML=notes.length?notes.map(n=>`
+    <div class="entry" style="cursor:pointer" onclick="resumeNote('${n.id}')"><div class="info">
+      <div class="nm">${OFFLINE_TYPE_ICON[n.type]||'📝'} ${n.summary||n.type}</div>
+      <div class="meta">${n.log_date}${n.log_date===today?' · today':''}</div></div>
+      <button class="rm" onclick="event.stopPropagation();removeOfflineNote('${n.id}');renderOfflineNotesList();">✕</button></div>`).join('')
+    :`<div class="empty">No pending notes.</div>`;
+}
+async function resumeNote(id){
+  const note=loadOfflineNotes().find(n=>n.id===id);
+  if(!note)return;
+  if(note.log_date!==viewDate){viewDate=note.log_date;await loadDay();renderAll();}
+  closeSheet();
+  if(note.type==='food'){
+    openFood();
+    document.getElementById('foodSearch').value=note.payload.name||'';
+    renderFoodList();
+  } else if(note.type==='exercise'){
+    await openEx();
+    if(visibleExTypesCache.includes(note.payload.type))setExType(note.payload.type);
+    else curExType=note.payload.type;
+    document.getElementById('exMin').value=note.payload.min||30;
+    document.getElementById('exNote').value=note.payload.note||'';
+  } else if(note.type==='weight'){
+    openBody();
+    if(note.payload.weight)document.getElementById('bdW').value=note.payload.weight;
+    if(note.payload.waist)document.getElementById('bdWa').value=note.payload.waist;
+  }
+  resumingNoteId=id;
+}
+function shortTodayLabel(){return new Date().toLocaleDateString(undefined,{day:'numeric',month:'short'});}
+function onOfflineFoodNoteInput(){
+  const ta=document.getElementById('offlineFoodNote');
+  if(offlineNoteWasEmpty&&ta.value.length===1){
+    const prefix=shortTodayLabel()+': ';
+    ta.value=prefix+ta.value;
+    ta.setSelectionRange(ta.value.length,ta.value.length);
+  }
+  offlineNoteWasEmpty=(ta.value.length===0);
+  clearTimeout(offlineNoteSaveT);
+  offlineNoteSaveT=setTimeout(()=>saveOfflineFoodNoteRaw(ta.value),400);
+}
+async function copyOfflineFoodNote(){
+  const ta=document.getElementById('offlineFoodNote'),btn=document.getElementById('offlineNoteCopyBtn');
+  try{await navigator.clipboard.writeText(ta.value);}
+  catch(e){ta.focus();ta.select();try{document.execCommand('copy');}catch(_){}}
+  btn.textContent='Copied ✓';btn.classList.add('done');
+  setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('done');},1600);
+}
+function clearOfflineFoodNote(){
+  if(!confirm('Clear the offline scratchpad? This cannot be undone.'))return;
+  const ta=document.getElementById('offlineFoodNote');
+  ta.value='';
+  offlineNoteWasEmpty=true;
+  saveOfflineFoodNoteRaw('');
 }
 
 /* ---------- targets ---------- */
@@ -1858,7 +2045,7 @@ function unlockBodyScroll(){
   window.scrollTo(0,scrollLockY);
 }
 function openSheet(id){document.getElementById('scrim').classList.add('on');document.getElementById(id).classList.add('on');lockBodyScroll();}
-function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));editingLogId=null;unlockBodyScroll();}
+function closeSheet(){document.getElementById('scrim').classList.remove('on');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on'));editingLogId=null;resumingNoteId=null;unlockBodyScroll();}
 
 /* ---------- background refresh ---------- */
 const REFRESH_MS=25000;
