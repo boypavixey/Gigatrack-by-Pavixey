@@ -2097,8 +2097,19 @@ init().then(()=>{
 });
 
 if('serviceWorker' in navigator){
+  let swRefreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(swRefreshing)return;
+    swRefreshing=true;
+    location.reload();
+  });
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(e=>console.error('Gigatrack: service worker registration failed',e));
+    navigator.serviceWorker.register('/sw.js',{scope:'/'}).then(reg=>{
+      reg.update().catch(()=>{});
+      document.addEventListener('visibilitychange',()=>{
+        if(document.visibilityState==='visible')reg.update().catch(()=>{});
+      });
+    }).catch(e=>console.error('Gigatrack: service worker registration failed',e));
   });
 }
 </script>

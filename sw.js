@@ -1,4 +1,6 @@
-const CACHE_NAME = 'gigatrack-shell-v1';
+// ⚠️ BUMP THIS VERSION NUMBER ON EVERY SINGLE DEPLOY, NO EXCEPTIONS
+// (not just when index.html/manifest/icons change — always)
+const CACHE_NAME = 'gigatrack-shell-v2';
 const SHELL_FILES = [
   '/',
   '/index.html',
